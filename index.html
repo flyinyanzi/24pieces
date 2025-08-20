@@ -1,19 +1,31 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="zh-CN">
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   <title>24 Pieces Demo</title>
+  <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
-  <h1>Hello Puzzle!</h1>
-  <p>这是我GitHub Pages上的第一个网页。</p>
-  <!-- index.html 里放背景层 -->
-<div class="board">
-  <img class="bg" src="assets/bg.jpg" alt="" />
-  <button class="piece" data-id="1" style="--mask:url(assets/masks/piece-01.svg)"></button>
-  <!-- 重复24个按钮（也可 JS 动态生成） -->
-</div>
-<div id="modal" class="hidden"></div>
-<script type="module" src="js/main.js"></script>
+  <!-- 内联 SVG：定义一个不规则形状的 clipPath（示意：叶片状） -->
+  <svg width="0" height="0" style="position:absolute">
+    <defs>
+      <clipPath id="clip-piece-1" clipPathUnits="objectBoundingBox">
+        <path d="M0.10,0.60 C0.15,0.30 0.35,0.05 0.60,0.10 C0.82,0.14 0.92,0.38 0.90,0.58
+                 C0.88,0.75 0.78,0.88 0.62,0.93 C0.45,0.98 0.27,0.92 0.18,0.80
+                 C0.12,0.72 0.08,0.66 0.10,0.60 Z"/>
+      </clipPath>
+    </defs>
+  </svg>
+
+  <div class="board">
+    <img class="bg" src="assets/bg.jpg" alt="背景图" />
+    <!-- 一块拼图：初始是灰色遮罩，完成后透出背景 -->
+    <button class="piece" data-id="1" aria-label="拼图块1"></button>
+  </div>
+
+  <!-- 简易弹窗 -->
+  <div id="modal" class="hidden" role="dialog" aria-modal="true"></div>
+
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>
