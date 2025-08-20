@@ -1,0 +1,19 @@
+/* styles.css */
+.board { position: relative; width: 100%; aspect-ratio: 16/9; }
+.bg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+.piece {
+  position:absolute; /* 用百分比定位到画面对应区域 */
+  left:10%; top:30%; width:15%; height:20%;
+  -webkit-mask-image: var(--mask);
+  mask-image: var(--mask);
+  mask-size: cover; mask-repeat: no-repeat; mask-position: center;
+  background: rgba(0,0,0,.15); /* 初始灰蒙层 */
+  border: 0; cursor: pointer;
+}
+.piece.solved {
+  /* 解锁时：把蒙层改为显示背景“透出”的效果 */
+  background: transparent;
+  pointer-events: none;
+  animation: reveal .6s ease;
+}
+@keyframes reveal { from { opacity:.2 } to { opacity:1 } }
