@@ -2,12 +2,13 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>24 Pieces Demo</title>
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
-  <!-- 内联 SVG：定义一个不规则形状的 clipPath（示意：叶片状） -->
-  <svg width="0" height="0" style="position:absolute">
+  <!-- 内联 SVG：示例的叶片形拼图 clipPath（仅做演示，后续可换成外部SVG mask） -->
+  <svg width="0" height="0" aria-hidden="true" style="position:absolute">
     <defs>
       <clipPath id="clip-piece-1" clipPathUnits="objectBoundingBox">
         <path d="M0.10,0.60 C0.15,0.30 0.35,0.05 0.60,0.10 C0.82,0.14 0.92,0.38 0.90,0.58
@@ -17,14 +18,24 @@
     </defs>
   </svg>
 
+  <header class="site-header">
+    <h1>24块默契拼图 · Demo</h1>
+    <p class="sub">点一块试试～</p>
+  </header>
+
   <div class="board">
     <img class="bg" src="assets/bg.jpg" alt="背景图" />
     <!-- 一块拼图：初始是灰色遮罩，完成后透出背景 -->
     <button class="piece" data-id="1" aria-label="拼图块1"></button>
   </div>
 
+  <!-- 弹窗由 ui.js 动态插入，这里不用写容器 -->
   <!-- 简易弹窗 -->
   <div id="modal" class="hidden" role="dialog" aria-modal="true"></div>
+
+  <footer class="site-footer">
+    <button id="reset">清空进度</button>
+  </footer>
 
   <script type="module" src="js/main.js"></script>
 </body>
