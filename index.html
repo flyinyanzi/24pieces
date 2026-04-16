@@ -1061,17 +1061,19 @@
     }
 
     function renderError(message) {
-      return `
-        <div class="card error-card">
-          <h2 class="title" style="font-size:26px;">页面加载失败</h2>
-          <p class="scene-poem" style="margin-top:12px;">当前页面地址：${window.location.href}</p>
-          <p class="scene-poem" style="margin-top:12px;">请确认：
+  return `
+    <div class="card error-card">
+      <h2 class="title" style="font-size:26px;">页面加载失败</h2>
+      <p class="scene-poem">${message || "未知错误"}</p>
+      <p class="scene-poem" style="margin-top:12px;">当前页面地址：${window.location.href}</p>
+      <p class="scene-poem" style="margin-top:12px;">tree.json 测试地址：${window.location.origin + window.location.pathname.replace(/index\\.html$/, '') + 'data/tree.json'}</p>
+      <p class="scene-poem" style="margin-top:12px;">请确认：
 1. tree.json 放在 ./data/tree.json
 2. 不是直接双击本地 html 打开
 3. 用 GitHub Pages / Live Server / 本地静态服务器运行</p>
-        </div>
-      `;
-    }
+    </div>
+  `;
+}
 
     function render() {
       updateSceneUI();
@@ -1167,29 +1169,39 @@
     }
 
     async function bootstrap() {
-      try {
-        const treeUrl = new URL('data/tree.json', window.location.href).href;
-        const res = await fetch(treeUrl, { cache: 'no-store' });
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}：${treeUrl}`);
-        }
+      <script>
+async function bootstrap() {
+  try {
+    const url = 'data/tree.json?ts=' + Date.now();
+    const res = await fetch(url, { cache: 'no-store' });
 
-        const raw = await res.json();
-
-        if (!Array.isArray(raw)) {
-          throw new Error('tree.json 顶层不是数组');
-        }
-
-        appState.data = { roots: raw };
-        appState.view = "welcome";
-      } catch (err) {
-        appState.view = "error";
-        appState.tempMessage = String(err && err.message ? err.message : err);
-      }
-      render();
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}，读取失败：${url}`);
     }
 
-    bootstrap();
-  </script>
+    const text = await res.text();
+
+    let raw;
+    try {
+      raw = JSON.parse(text);
+    } catch (jsonErr) {
+      throw new Error(`JSON 解析失败：${jsonErr.message}`);
+    }
+
+    if (!Array.isArray(raw)) {
+      throw new Error(`tree.json 顶层不是数组，而是：${Object.prototype.toString.call(raw)}`);
+    }
+
+    appState.data = { roots: raw };
+    appState.view = "welcome";
+
+    render();
+  } catch (err) {
+    appState.view = "error";
+    appState.tempMessage = err && err.message ? err.message : String(err);
+    render();
+  }
+}
+</script>
 </body>
 </html>
