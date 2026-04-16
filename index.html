@@ -1152,21 +1152,21 @@
       main.innerHTML = html;
     }
 
-    async function bootstrap() {
-      try {
-        const res = await fetch('./data/tree.json');
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const raw = await res.json();
-        if (!Array.isArray(raw)) throw new Error('tree.json 顶层不是数组');
+    // async function bootstrap() {
+    //   try {
+    //     const res = await fetch('./data/tree.json');
+    //     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    //     const raw = await res.json();
+    //     if (!Array.isArray(raw)) throw new Error('tree.json 顶层不是数组');
 
-        appState.data = { roots: raw };
-        appState.view = "welcome";
-      } catch (err) {
-        appState.view = "error";
-        appState.tempMessage = String(err && err.message ? err.message : err);
-      }
-      render();
-    }
+    //     appState.data = { roots: raw };
+    //     appState.view = "welcome";
+    //   } catch (err) {
+    //     appState.view = "error";
+    //     appState.tempMessage = String(err && err.message ? err.message : err);
+    //   }
+    //   render();
+    // }
 
 async function bootstrap() {
   try {
