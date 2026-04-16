@@ -493,9 +493,30 @@
       return false;
     }
 
+
+    function getNodeId(node) {
+      return node?.node_id ?? node?.id ?? null;
+    }
+
+    function getNodeType(node) {
+      return node?.node_type ?? node?.type ?? null;
+    }
+
+    function getWordId(node) {
+      return node?.word_id ?? node?.wordId ?? null;
+    }
+
+    function getWordText(node) {
+      return node?.word_text ?? node?.wordText ?? cleanLabel(node?.label || "");
+    }
+
+    function getIsFallback(node) {
+      return node?.is_fallback ?? node?.isFallback ?? false;
+    }
+
     function findNodeById(id, nodes = appState.data.roots) {
       for (const node of nodes) {
-        if (node.node_id === id) return node;
+        if (getNodeId(node) === id) return node;
         if (node.children) {
           const found = findNodeById(id, node.children);
           if (found) return found;
@@ -505,15 +526,15 @@
     }
 
     function isWordLeaf(node) {
-      return node && node.node_type === "word_leaf";
+      return node && getNodeType(node) === "word_leaf";
     }
 
     function getWordNameById(wordId) {
       let found = null;
       for (const root of appState.data.roots) {
         walk(root, (node) => {
-          if (node.word_id === wordId) {
-            found = node.word_text || cleanLabel(node.label);
+          if (getWordId(node) === wordId) {
+            found = getWordText(node);
             return true;
           }
           return false;
@@ -576,12 +597,12 @@
     function getAvailableNormalChildren(parentId) {
       const children = getChildren(parentId);
       const st = getParentState(parentId);
-      return children.filter(c => !c.is_fallback && !st.askedIds.includes(c.node_id));
+      return children.filter(c => !getIsFallback(c) && !st.askedIds.includes(getNodeId(c)));
     }
 
     function getFallbackChild(parentId) {
       const children = getChildren(parentId);
-      return children.find(c => c.is_fallback) || null;
+      return children.find(c => getIsFallback(c)) || null;
     }
 
     function takeSnapshot() {
@@ -615,7 +636,7 @@
       const normalChildren = getAvailableNormalChildren(parentId);
       if (normalChildren.length > 0) {
         const picked = rand(normalChildren);
-        appState.round.currentQuestionNodeId = picked.node_id;
+        appState.round.currentQuestionNodeId = getNodeId(picked);
         appState.view = "question";
         render();
         return;
@@ -625,7 +646,7 @@
       const fallback = getFallbackChild(parentId);
       if (fallback && !parentState.fallbackEntered) {
         parentState.fallbackEntered = true;
-        beginAtParent(fallback.node_id, previousAnswer);
+        beginAtParent(getNodeId(fallback), previousAnswer);
         return;
       }
 
@@ -653,8 +674,8 @@
 
       takeSnapshot();
 
-      if (!parentState.askedIds.includes(qNode.node_id)) {
-        parentState.askedIds.push(qNode.node_id);
+      if (!parentState.askedIds.includes(getNodeId(qNode))) {
+        parentState.askedIds.push(getNodeId(qNode));
       }
 
       if (answer === true && cleanLabel(qNode.label) === "更倾向于消极") {
@@ -665,8 +686,8 @@
 
       if (answer) {
         if (isWordLeaf(qNode)) {
-          appState.round.guessedWordId = qNode.word_id;
-          appState.round.guessedWordName = qNode.word_text || cleanLabel(qNode.label);
+          appState.round.guessedWordId = getWordId(qNode);
+          appState.round.guessedWordName = getWordText(qNode);
           appState.view = "guess_word";
           render();
           return;
@@ -679,7 +700,7 @@
           return;
         }
 
-        beginAtParent(qNode.node_id, true);
+        beginAtParent(getNodeId(qNode), true);
       } else {
         beginAtParent(parentId, false);
       }
@@ -713,7 +734,7 @@
         render();
         return;
       }
-      beginAtParent(qNode.node_id, true);
+      beginAtParent(getNodeId(qNode), true);
     }
 
     function confirmGuess(correct) {
@@ -745,7 +766,7 @@
         walk(root, (node) => {
           if (isWordLeaf(node)) {
             const rawLabel = String(node.label || "");
-            const rawText = String(node.word_text || "");
+            const rawText = String(getWordText(node) || "");
             if (!rawLabel.includes("不要出现在猜AI环节") && !rawText.includes("不要出现在猜AI环节")) {
               leaves.push({ root, leaf: node });
             }
@@ -759,7 +780,7 @@
     function buildPathToLeaf(rootNode, leafId) {
       function dfs(node, path) {
         const nextPath = [...path, node];
-        if (node.node_id === leafId) return nextPath;
+        if (getNodeId(node) === leafId) return nextPath;
         if (!node.children) return null;
         for (const child of node.children) {
           const result = dfs(child, nextPath);
@@ -773,14 +794,14 @@
     function startAiRound() {
       const allLeaves = getAiEligibleLeaves();
       const picked = rand(allLeaves);
-      const path = buildPathToLeaf(picked.root, picked.leaf.node_id)
+      const path = buildPathToLeaf(picked.root, getNodeId(picked.leaf))
         .filter(n => !isWordLeaf(n))
         .map(n => cleanLabel(n.label))
         .filter(Boolean);
 
       appState.aiRound = {
-        wordId: picked.leaf.word_id,
-        wordLabel: picked.leaf.word_text || cleanLabel(picked.leaf.label),
+        wordId: getWordId(picked.leaf),
+        wordLabel: getWordText(picked.leaf),
         path,
         revealIndex: 0
       };
@@ -840,7 +861,7 @@
         </div>
         <div class="root-grid">
           ${roots.map(root => `
-            <button class="root-btn" onclick="startRootById('${root.node_id}')">${cleanLabel(root.label)}</button>
+            <button class="root-btn" onclick="startRootById('${getNodeId(root)}')">${cleanLabel(root.label)}</button>
           `).join("")}
         </div>
         <div class="button-row">
@@ -1187,11 +1208,12 @@
           throw new Error(`tree.json 不是合法 JSON：${jsonErr.message}`);
         }
 
-        if (!Array.isArray(raw)) {
-          throw new Error(`tree.json 顶层不是数组`);
+        const roots = Array.isArray(raw) ? raw : raw?.roots;
+        if (!Array.isArray(roots)) {
+          throw new Error(`tree.json 顶层既不是数组，也没有 roots 数组`);
         }
 
-        appState.data = { roots: raw };
+        appState.data = { roots };
         appState.view = "welcome";
       } catch (err) {
         appState.view = "error";
