@@ -1061,19 +1061,19 @@
     }
 
     function renderError(message) {
-  return `
-    <div class="card error-card">
-      <h2 class="title" style="font-size:26px;">页面加载失败</h2>
-      <p class="scene-poem">${message || "未知错误"}</p>
-      <p class="scene-poem" style="margin-top:12px;">当前页面地址：${window.location.href}</p>
-      <p class="scene-poem" style="margin-top:12px;">tree.json 测试地址：${window.location.origin + window.location.pathname.replace(/index\\.html$/, '') + 'data/tree.json'}</p>
-      <p class="scene-poem" style="margin-top:12px;">请确认：
-1. tree.json 放在 ./data/tree.json
-2. 不是直接双击本地 html 打开
-3. 用 GitHub Pages / Live Server / 本地静态服务器运行</p>
-    </div>
-  `;
-}
+      return `
+        <div class="card error-card">
+          <h2 class="title" style="font-size:26px;">页面加载失败</h2>
+          <p class="scene-poem">${message || "未知错误"}</p>
+          <p class="scene-poem" style="margin-top:12px;">当前页面地址：${window.location.href}</p>
+          <p class="scene-poem" style="margin-top:12px;">tree.json 测试地址：${window.location.origin + window.location.pathname.replace(/index\\.html$/, '') + 'data/tree.json'}</p>
+          <p class="scene-poem" style="margin-top:12px;">请确认：
+    1. tree.json 放在 ./data/tree.json
+    2. 不是直接双击本地 html 打开
+    3. 用 GitHub Pages / Live Server / 本地静态服务器运行</p>
+        </div>
+      `;
+    }
 
     function render() {
       updateSceneUI();
@@ -1168,8 +1168,6 @@
       render();
     }
 
-    async function bootstrap() {
-      <script>
 async function bootstrap() {
   try {
     const url = 'data/tree.json?ts=' + Date.now();
