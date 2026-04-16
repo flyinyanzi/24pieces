@@ -1,181 +1,1172 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>读心术小游戏</title>
-
-<style>
-body {
-  margin: 0;
-  font-family: -apple-system, sans-serif;
-  background: #f5efe7;
-  display: flex;
-  justify-content: center;
-}
-
-#app {
-  width: 600px;
-  margin-top: 40px;
-}
-
-.card {
-  background: white;
-  border-radius: 16px;
-  padding: 20px;
-  margin-bottom: 16px;
-  box-shadow: 0 10px 20px rgba(0,0,0,0.05);
-}
-
-button {
-  padding: 10px 16px;
-  border-radius: 10px;
-  border: none;
-  cursor: pointer;
-  margin: 6px;
-}
-
-.primary { background: #c88c7a; color: white; }
-.secondary { background: #eee; }
-</style>
-</head>
-
-<body>
-<div id="app"></div>
-
-<script>
-
-let data = null;
-let currentNode = null;
-
-// 去掉 <> {}
-function clean(text){
-  return text.replace(/[{}<>]/g,"");
-}
-
-// 初始化
-async function init(){
-  try{
-    const res = await fetch('./data/tree.json');
-    const raw = await res.json();
-
-    data = { roots: raw };
-
-    renderStart();
-  }catch(e){
-    document.getElementById("app").innerHTML =
-      "<div class='card'>❌ 无法读取 tree.json，请用本地服务器打开</div>";
-  }
-}
-
-// 开始页
-function renderStart(){
-  document.getElementById("app").innerHTML = `
-    <div class="card">
-      <h2>读心术小游戏</h2>
-      <p>在心里想一个词，我来猜～</p>
-    </div>
-
-    <div class="card">
-      ${data.roots.map(r=>`
-        <button onclick="start('${r.node_id}')">
-          ${clean(r.label)}
-        </button>
-      `).join("")}
-    </div>
-  `;
-}
-
-// 选根节点
-function start(id){
-  currentNode = findNode(id,data.roots);
-  next();
-}
-
-// 主逻辑
-function next(){
-
-  // 叶子词
-  if(currentNode.node_type === "word_leaf"){
-    guess(currentNode);
-    return;
-  }
-
-  if(!currentNode.children || currentNode.children.length===0){
-    document.getElementById("app").innerHTML =
-      "<div class='card'>❌ 没有子节点了</div>";
-    return;
-  }
-
-  // 非 fallback
-  const normal = currentNode.children.filter(c=>!c.is_fallback);
-
-  if(normal.length > 0){
-    const pick = normal[Math.floor(Math.random()*normal.length)];
-    ask(pick);
-  }else{
-    // fallback
-    const fb = currentNode.children.find(c=>c.is_fallback);
-    currentNode = fb;
-    next();
-  }
-}
-
-// 提问
-function ask(node){
-  document.getElementById("app").innerHTML = `
-    <div class="card">
-      <h3>TA是不是 ${clean(node.label)}？</h3>
-    </div>
-
-    <button class="primary" onclick="answer(true,'${node.node_id}')">是</button>
-    <button class="secondary" onclick="answer(false,'${node.node_id}')">否</button>
-  `;
-}
-
-// 回答
-function answer(yes,id){
-
-  const node = findNode(id,data.roots);
-
-  if(yes){
-    currentNode = node;
-  }else{
-    // 标记已问过（避免重复问）
-    currentNode.children =
-      currentNode.children.filter(c=>c.node_id !== id);
-  }
-
-  next();
-}
-
-// 查找节点
-function findNode(id,nodes){
-  for(let n of nodes){
-    if(n.node_id === id) return n;
-
-    if(n.children){
-      const r = findNode(id,n.children);
-      if(r) return r;
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>读心术小游戏</title>
+  <style>
+    :root {
+      --bg: #f7f2ea;
+      --card: rgba(255,255,255,0.84);
+      --text: #4d4036;
+      --muted: #8b7d73;
+      --accent: #c88c7a;
+      --line: rgba(77,64,54,0.12);
+      --shadow: 0 14px 40px rgba(80,57,44,0.08);
+      --radius: 24px;
     }
-  }
-}
 
-// 猜词
-function guess(node){
-  document.getElementById("app").innerHTML = `
-    <div class="card">
-      <h2>我猜你想的是：</h2>
-      <h1>${node.word_text}</h1>
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: linear-gradient(180deg, #f9f5ef 0%, #f5efe7 100%);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
+        "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .app {
+      width: min(920px, 100%);
+      display: grid;
+      gap: 18px;
+    }
+
+    .scene-shell {
+      position: relative;
+      min-height: 76vh;
+      border-radius: 32px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at top left, rgba(255,255,255,0.55), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(255,255,255,0.35), transparent 30%),
+        linear-gradient(160deg, var(--scene-a, #f8efe6), var(--scene-b, #efe2d4));
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255,255,255,0.55);
+    }
+
+    .scene-overlay {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 20% 25%, rgba(255,255,255,0.35), transparent 18%),
+        radial-gradient(circle at 70% 20%, rgba(255,255,255,0.2), transparent 16%),
+        radial-gradient(circle at 80% 75%, rgba(255,255,255,0.22), transparent 18%);
+      pointer-events: none;
+    }
+
+    .topbar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 20px 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.64);
+      border: 1px solid rgba(255,255,255,0.62);
+      color: var(--muted);
+      font-size: 14px;
+      backdrop-filter: blur(8px);
+    }
+
+    .progress-strip {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      max-width: 58%;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(77,64,54,0.12);
+      transition: transform .2s ease, background .2s ease;
+    }
+
+    .dot.filled {
+      background: var(--accent);
+      transform: scale(1.15);
+    }
+
+    .main {
+      position: relative;
+      z-index: 1;
+      padding: 18px 20px 24px;
+      display: grid;
+      gap: 18px;
+      align-content: start;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,0.6);
+      backdrop-filter: blur(10px);
+      border-radius: var(--radius);
+      padding: 22px;
+      box-shadow: 0 10px 30px rgba(107,86,74,0.06);
+    }
+
+    .title {
+      margin: 0 0 10px;
+      font-size: clamp(24px, 4vw, 34px);
+      line-height: 1.18;
+      letter-spacing: 0.01em;
+    }
+
+    .body-text, .scene-poem {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.85;
+      font-size: 15px;
+      white-space: pre-wrap;
+    }
+
+    .question {
+      font-size: clamp(22px, 3.5vw, 30px);
+      line-height: 1.45;
+      margin: 0;
+    }
+
+    .button-row, .root-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .button-row {
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    }
+
+    .root-grid {
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+
+    button {
+      appearance: none;
+      border: none;
+      outline: none;
+      border-radius: 20px;
+      padding: 14px 18px;
+      font-size: 15px;
+      line-height: 1.35;
+      cursor: pointer;
+      transition: transform .16s ease, box-shadow .16s ease, opacity .16s ease;
+      background: white;
+      color: var(--text);
+      box-shadow: 0 8px 20px rgba(104,82,67,0.08);
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 24px rgba(104,82,67,0.1);
+    }
+
+    button:disabled {
+      opacity: 0.52;
+      cursor: default;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .primary {
+      background: linear-gradient(180deg, #d89e8d, #ca8c79);
+      color: #fffaf8;
+    }
+
+    .secondary {
+      background: rgba(255,255,255,0.84);
+      color: var(--text);
+    }
+
+    .ghost {
+      background: rgba(255,255,255,0.52);
+      color: var(--muted);
+      border: 1px solid rgba(77,64,54,0.08);
+    }
+
+    .root-btn {
+      min-height: 88px;
+      text-align: left;
+      display: flex;
+      align-items: flex-end;
+      font-size: 16px;
+      border: 1px solid rgba(77,64,54,0.05);
+      background: linear-gradient(180deg, rgba(255,255,255,0.94), rgba(255,255,255,0.74));
+    }
+
+    .tiny {
+      font-size: 13px;
+      color: var(--muted);
+      margin: 0;
+    }
+
+    .result-word {
+      font-size: clamp(28px, 5vw, 44px);
+      line-height: 1.2;
+      margin: 8px 0 0;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .chips {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .chip {
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.62);
+      border: 1px solid rgba(77,64,54,0.07);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .solved-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .solved-item {
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.64);
+      color: var(--text);
+      font-size: 14px;
+      border: 1px solid rgba(77,64,54,0.06);
+    }
+
+    .hidden-box {
+      padding: 22px;
+      border-radius: 24px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.74));
+      border: 1px solid rgba(255,255,255,0.62);
+      text-align: center;
+    }
+
+    .hidden-word {
+      font-size: clamp(30px, 6vw, 52px);
+      margin: 10px 0;
+      letter-spacing: .08em;
+    }
+
+    .footer-note {
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      padding-bottom: 6px;
+    }
+
+    .error-card {
+      color: #8c2f2f;
+      background: #fff3f3;
+      border: 1px solid #f0caca;
+    }
+
+    @media (max-width: 720px) {
+      body { padding: 12px; }
+      .scene-shell { min-height: 84vh; }
+      .topbar { align-items: flex-start; flex-direction: column; }
+      .progress-strip { max-width: 100%; justify-content: flex-start; }
+      .card { padding: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="scene-shell" id="sceneShell">
+      <div class="scene-overlay"></div>
+      <div class="topbar">
+        <div class="badge" id="sceneBadge">第 1 幕 · 0 / 24</div>
+        <div class="progress-strip" id="progressStrip"></div>
+      </div>
+      <div class="main" id="appMain"></div>
     </div>
+    <div class="footer-note">先把完整逻辑跑顺，再继续打磨绘本风 UI。</div>
+  </div>
 
-    <button class="primary" onclick="renderStart()">猜对了</button>
-    <button class="secondary" onclick="renderStart()">猜错了</button>
-  `;
-}
+  <script>
+    const TARGET_SUCCESS_COUNT = 24;
+    const HIDDEN_WORDS = ["一间能看见月亮的房间", "一条洒满月光的路"];
 
-init();
+    const SPECIAL_LINES = {
+      "郑州": "是芮芮出生、长大的地方，你在这里收获了亲情、友情以及早八，也成为了善良、勇敢、美好的人～",
+      "北京": "是你上大学的地方，也是你有很多回忆和体验的地方，祝愿你今后在这里的每一天都是快乐的！",
+      "烟台": "相信迷笛音乐节是你美好的回忆。",
+      "云南": "愿你以后可以在这里领略自然的清新与辽远，也感受返璞归真的日常。",
+      "大阪": "是我生活的城市哈哈，希望我分享的那些生活角落可以让你得到放松～",
+      "东京": "这里生活节奏真的好快哦，不过也有很多咖啡馆唱片店以及有趣的小店！",
+      "京都": "是我也生活了很久的城市，是让人迷恋而沉醉的城市，鸭川散步的感觉好惬意。",
+      "雷克雅未克": "是在世界尽头的地方，是冰与火之国，是极光飞舞以及精灵闪烁的地方。",
+      "冰岛": "是在世界尽头的地方，是冰与火之国，是极光飞舞以及精灵闪烁的地方。",
+      "日本": "这是个充满矛盾的地方，是我留下了十几年记忆的地方。",
+      "对外经贸大学": "解锁新词汇！愿你在这里的经历都是难忘而美好的，走过的路在未来都会闪闪发光。",
+      "惠新西街": "解锁新词汇！愿你在这里的经历都是难忘而美好的，走过的路在未来都会闪闪发光。",
+      "鸭川": "这里夏天时真的会有鸭子游过呢，傍晚川水会被夕阳温柔覆盖，夜晚有人放线香花火，明月低悬在远山。",
+      "国家地理展览": "你想到这个展览啦～神奇而壮丽的景象很难忘，开心的回忆！",
+      "陶喆": "你果然想到他啦！听他唱歌真的会变得心情舒畅呢！",
+      "袁娅维": "耶，想到她啦！好像是我们第一个提起过的歌手～",
+      "方大同": "他会像一颗星星一样永远闪耀。",
+      "权志龙": "我记得你喜欢他啦，他很酷也很可爱啦。",
+      "许巍": "他也是我很喜欢的歌手，每次听都觉得烦恼可以随风而散，融入大海。",
+      "deca joins": "关于他们有很多记忆呢，我记得那天晚上我看完演出你安慰我，也记得你把他们的日历贴在宿舍～",
+      "刺猬": "是会让人有些感慨的乐队呢。上大学时ta们和后鲨的海报会出现在校园，午后从鼓楼走到MAO去看演出。",
+      "Sigur Rós": "很开心你想到这个词，它是我最喜欢的乐队～",
+      "Live House": "愿你可以在更多音乐现场感受放松与美妙的音乐体验～",
+      "音乐现场": "愿你可以在更多音乐现场感受放松与美妙的音乐体验～",
+      "《少年锦时》": "相信快乐很简单，爱很简单～愿你未来的生活也都快乐如彼时～",
+      "看日落": "解锁新词汇！是你很喜欢的呢，日落真的很美很温柔，愿你未来都能有随时感受日落的心境。",
+      "日落": "解锁新词汇！是你很喜欢的呢，日落真的很美很温柔，愿你未来都能有随时感受日落的心境。",
+      "日落时分": "解锁新词汇！是你很喜欢的呢，日落真的很美很温柔，愿你未来都能有随时感受日落的心境。",
+      "画画": "你画的小画很可爱呢！愿你今后也随时有写写画画、做自己喜欢的事的惬意时刻～",
+      "手作": "好像是你在郑州和朋友一起喜欢做的事呢，感觉是很开心惬意的时光啦！",
+      "逛公园": "愿你有更多静下来感受自然与放松的时光～",
+      "朝阳公园": "愿你有更多静下来感受自然与放松的时光～",
+      "睡觉": "哇，真的会想到这个词！祝你以后每天都有好的睡眠～",
+      "早八": "记录一只充满奇迹而幸运的、给人温暖而淘气的小猫！",
+      "银杏叶": "很喜欢秋天整条街都是金黄色的景象，也记得你在大学校园里捡到的一大束落叶。",
+      "skullpanda": "很开心你想到这个词，我很喜欢TA！",
+      "小马宝莉": "TA们很可爱也很勇敢，很好笑也很感人。还有我记得你喜欢碧琪啦！",
+      "小黑": "我们的小黑被想到啦，哈哈哈！它也很开心你给起的“珍珠”这个名字！",
+      "相机": "我们都是热爱生活的人，也祝愿你今后能够记录下更多美好回忆～",
+      "眼药水": "可能是我们认识时提到的第一个物品哈哈，你说你眼睛干涩时会用海露。",
+      "护手霜": "哈哈，以护手霜为首的我的谜之百宝箱～",
+      "退烧贴": "祝你以后身体健康，永远都用不上它！",
+      "贝斯": "很开心你想到它！贝斯的音色和律动感让人着迷，它在乐队中也是不可或缺的！",
+      "蓝莓": "好像是我们第一个聊到的水果哈哈～蓝莓对眼睛很好啦！",
+      "多肉葡萄": "你喜欢的喜茶的饮品～谢谢推荐啦，它确实很好喝！",
+      "提子饼干": "你想到这个词啦！是我喜欢的零食，也是我的微信名哈哈～",
+      "见手青": "最初是在《舌尖上的中国》里看到的，希望以后有机会在云南吃到～",
+      "《动物世界》": "它真是很好看的呀！自然最美好了，动物最美好了！"
+    };
 
-</script>
+    const SCENES = [
+      { min: 0, max: 3, title: "第一幕", badge: "柔光的开端", a: "#f7eee7", b: "#eddccf", text: "先在心里轻轻抓住一个词。\n它也许像一颗糖、一首歌、一片叶子，或者是一段悄悄发亮的回忆。" },
+      { min: 4, max: 7, title: "第二幕", badge: "午后与风", a: "#eef2e5", b: "#d9e5cf", text: "我们已经走过了一小段路。\n有些词像风吹过树梢，有些词会让人想起夏天和街道。" },
+      { min: 8, max: 11, title: "第三幕", badge: "城市与音乐", a: "#ece9f5", b: "#ddd7ef", text: "越往里走，越像在翻一册小小的地图。\n城市、场所、歌手、乐队，都在里面闪着光。" },
+      { min: 12, max: 15, title: "第四幕", badge: "柔软的事物", a: "#f8ecef", b: "#f0d8df", text: "有些词与温柔有关。\n像护手霜、日落、画画，也像安静地睡一觉。" },
+      { min: 16, max: 19, title: "第五幕", badge: "夜晚与星光", a: "#eceff7", b: "#d8dfef", text: "快要接近礼物的深处了。\n也许接下来会出现夜晚、川水、极光，或者月亮低低地落下来。" },
+      { min: 20, max: 23, title: "第六幕", badge: "快要抵达", a: "#f7f0e7", b: "#ead8c5", text: "再往前一点点，就会抵达那句真正想送给你的话。\n现在，让我们把最后几颗词语的星星点亮吧。" },
+      { min: 24, max: 999, title: "终章", badge: "月光显现", a: "#ede8f5", b: "#d9d4e9", text: "所有散落在路上的词，都慢慢把光聚拢起来了。" }
+    ];
+
+    const REPLY_TEXT = {
+      welcome: `欢迎来到读心术小游戏！
+在我们以前聊到过的那些内容里，先在心里抓住一个词。
+凭直觉想就可以。
+它可能和喜好或经历有关，
+也可能是一个名字、一样东西，甚至是某种感受。`,
+      yesLeads: [
+        "好，让我想一想……TA是不是“{q}”？",
+        "好像离答案越来越近了！TA是不是“{q}”？",
+        "好耶！TA是不是“{q}”？",
+        "TA是不是“{q}”？"
+      ],
+      noLeads: [
+        "那TA是“{q}”吗？",
+        "嗯，那么TA是不是“{q}”？",
+        "TA是不是“{q}”？"
+      ],
+      guessWord: [
+        "我猜你想的词是“{word}”，对吗？",
+        "我脑海里有了一个词……“{word}”，对吗？"
+      ],
+      guessed: [
+        "太好啦，猜中了！解锁新词汇！",
+        "好耶，我猜中啦！解锁新词汇！",
+        "猜对啦！解锁新词汇！",
+        "猜中咯！解锁新词汇！"
+      ],
+      failed: [
+        "啊，我暂时没有想到别的词……可以把想的词告诉我哦！",
+        "我是不是想到了错误的方向……可以把想的词告诉我哦！",
+        "啊哦，猜错了……可以把想的词告诉我哦！",
+        "猜错了呢……可以把想的词告诉我哦！"
+      ],
+      noMore: [
+        "啊，我暂时没有想到别的词……可以把想的词告诉我哦！",
+        "我暂时没有想到更多的词，可能是分类还不完善……可以把想的词告诉我哦！",
+        "啊哦，暂时没有想到更多的词了……可以把想的词告诉我哦！"
+      ],
+      nextRound: "再想一个词吗，还是换我想一个词你来猜？",
+      negativePrompt: "我猜这个词也许会唤起你并不很开心的回忆，要继续吗？",
+      negativeContinue: "好呢。拥有它是很正常的啦，那我继续猜～",
+      negativeStop: "好呢。没事的，拥有它是很正常的啦，抱抱芮芮～",
+      aiIntro: "我现在想好了一个词，我逐步给你提示，你来猜一猜～",
+      aiReady: "准备开始！",
+      aiAnswer: [
+        "我想的词是“{word}”，你猜对了吗？",
+        "我脑海里的词是“{word}”，你猜得对吗？"
+      ],
+      aiGiveUp: [
+        "我想的词是“{word}”，怎么样呢～",
+        "我脑海里的词是“{word}”，怎么样呀～",
+        "我想的词是“{word}”，有没有恍然大悟的感觉～"
+      ]
+    };
+
+    const appState = {
+      view: "loading",
+      data: { roots: [] },
+      solvedWordIds: new Set(),
+      rootBatchOffset: 0,
+      round: null,
+      aiRound: null,
+      tempMessage: ""
+    };
+
+    function cleanLabel(label = "") {
+      return label.replace(/[{}<>]/g, "").replace(/（.*?）/g, "").trim();
+    }
+
+    function rand(arr) {
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    function format(template, vars) {
+      return template.replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? "");
+    }
+
+    function deepClone(obj) {
+      return JSON.parse(JSON.stringify(obj));
+    }
+
+    function currentScene() {
+      const n = appState.solvedWordIds.size;
+      return SCENES.find(s => n >= s.min && n <= s.max) || SCENES[0];
+    }
+
+    function updateSceneUI() {
+      const scene = currentScene();
+      const shell = document.getElementById("sceneShell");
+      shell.style.setProperty("--scene-a", scene.a);
+      shell.style.setProperty("--scene-b", scene.b);
+      document.getElementById("sceneBadge").textContent = `${scene.title} · ${appState.solvedWordIds.size} / ${TARGET_SUCCESS_COUNT}`;
+
+      const strip = document.getElementById("progressStrip");
+      strip.innerHTML = "";
+      for (let i = 0; i < TARGET_SUCCESS_COUNT; i++) {
+        const dot = document.createElement("div");
+        dot.className = `dot ${i < appState.solvedWordIds.size ? "filled" : ""}`;
+        strip.appendChild(dot);
+      }
+    }
+
+    function getVisibleRoots() {
+      return appState.data.roots.filter(root => {
+        const label = cleanLabel(root.label);
+        return !label.includes("隐藏词组");
+      });
+    }
+
+    function getRootBatch() {
+      const roots = getVisibleRoots();
+      if (roots.length <= 4) return roots;
+      const batch = [];
+      let offset = appState.rootBatchOffset % roots.length;
+      while (batch.length < 4) {
+        batch.push(roots[offset % roots.length]);
+        offset += 1;
+      }
+      return batch;
+    }
+
+    function cycleRootBatch() {
+      appState.rootBatchOffset += 4;
+      render();
+    }
+
+    function findNodeById(id, nodes = appState.data.roots) {
+      for (const node of nodes) {
+        if (node.node_id === id) return node;
+        if (node.children) {
+          const found = findNodeById(id, node.children);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+
+    function isWordLeaf(node) {
+      return node && node.node_type === "word_leaf";
+    }
+
+    function getWordNameById(wordId) {
+      let found = null;
+      for (const root of appState.data.roots) {
+        walk(root, (node) => {
+          if (node.word_id === wordId) {
+            found = node.word_text || cleanLabel(node.label);
+            return true;
+          }
+          return false;
+        });
+        if (found) break;
+      }
+      return found;
+    }
+
+    function walk(node, fn) {
+      const stop = fn(node);
+      if (stop) return true;
+      if (!node.children) return false;
+      for (const child of node.children) {
+        if (walk(child, fn)) return true;
+      }
+      return false;
+    }
+
+    function getChildren(nodeId) {
+      const node = findNodeById(nodeId);
+      return node?.children || [];
+    }
+
+    function createRound(rootId) {
+      const root = findNodeById(rootId);
+      return {
+        rootId,
+        currentParentId: rootId,
+        currentQuestionNodeId: null,
+        pathSnapshots: [],
+        statesByParent: {}
+      };
+    }
+
+    function getParentState(parentId) {
+      if (!appState.round.statesByParent[parentId]) {
+        appState.round.statesByParent[parentId] = {
+          askedIds: [],
+          fallbackEntered: false
+        };
+      }
+      return appState.round.statesByParent[parentId];
+    }
+
+    function getAvailableNormalChildren(parentId) {
+      const children = getChildren(parentId);
+      const st = getParentState(parentId);
+      return children.filter(c => !c.is_fallback && !st.askedIds.includes(c.node_id));
+    }
+
+    function getFallbackChild(parentId) {
+      const children = getChildren(parentId);
+      return children.find(c => c.is_fallback) || null;
+    }
+
+    function takeSnapshot() {
+      appState.round.pathSnapshots.push(deepClone({
+        currentParentId: appState.round.currentParentId,
+        currentQuestionNodeId: appState.round.currentQuestionNodeId,
+        statesByParent: appState.round.statesByParent
+      }));
+    }
+
+    function restoreLastSnapshot() {
+      const history = appState.round.pathSnapshots;
+      if (!history.length) return false;
+      const last = history.pop();
+      appState.round.currentParentId = last.currentParentId;
+      appState.round.currentQuestionNodeId = last.currentQuestionNodeId;
+      appState.round.statesByParent = last.statesByParent;
+      return true;
+    }
+
+    function beginAtParent(parentId, previousAnswer = null) {
+      appState.round.previousAnswer = previousAnswer;
+      appState.round.currentParentId = parentId;
+
+      const normalChildren = getAvailableNormalChildren(parentId);
+      if (normalChildren.length > 0) {
+        const picked = rand(normalChildren);
+        appState.round.currentQuestionNodeId = picked.node_id;
+        appState.view = "question";
+        render();
+        return;
+      }
+
+      const parentState = getParentState(parentId);
+      const fallback = getFallbackChild(parentId);
+      if (fallback && !parentState.fallbackEntered) {
+        parentState.fallbackEntered = true;
+        beginAtParent(fallback.node_id, previousAnswer);
+        return;
+      }
+
+      appState.view = "no_more_words";
+      render();
+    }
+
+    function startRootById(rootId) {
+      appState.round = createRound(rootId);
+      beginAtParent(rootId, null);
+    }
+
+    function textForQuestion(node) {
+      const q = cleanLabel(node.label);
+      const prev = appState.round?.previousAnswer;
+      if (prev === true) return format(rand(REPLY_TEXT.yesLeads), { q });
+      if (prev === false) return format(rand(REPLY_TEXT.noLeads), { q });
+      return `TA是不是“${q}”？`;
+    }
+
+    function answerCurrentQuestion(answer) {
+      const qNode = findNodeById(appState.round.currentQuestionNodeId);
+      const parentId = appState.round.currentParentId;
+      const parentState = getParentState(parentId);
+
+      takeSnapshot();
+
+      if (!parentState.askedIds.includes(qNode.node_id)) {
+        parentState.askedIds.push(qNode.node_id);
+      }
+
+      if (answer === true && cleanLabel(qNode.label) === "更倾向于消极") {
+        appState.view = "negative_confirm";
+        render();
+        return;
+      }
+
+      if (answer) {
+        if (isWordLeaf(qNode)) {
+          appState.round.guessedWordId = qNode.word_id;
+          appState.round.guessedWordName = qNode.word_text || cleanLabel(qNode.label);
+          appState.view = "guess_word";
+          render();
+          return;
+        }
+
+        const children = qNode.children || [];
+        if (!children.length) {
+          appState.view = "no_more_words";
+          render();
+          return;
+        }
+
+        beginAtParent(qNode.node_id, true);
+      } else {
+        beginAtParent(parentId, false);
+      }
+    }
+
+    function goBackOneStep() {
+      if (!appState.round) return;
+      const ok = restoreLastSnapshot();
+      if (!ok) return;
+      appState.view = "question";
+      render();
+    }
+
+    function confirmNegativeContinue(shouldContinue) {
+      if (shouldContinue) {
+        appState.tempMessage = REPLY_TEXT.negativeContinue;
+        appState.view = "negative_note_continue";
+      } else {
+        appState.tempMessage = REPLY_TEXT.negativeStop;
+        appState.view = "negative_note_stop";
+      }
+      render();
+    }
+
+    function resumeAfterNegativeContinue() {
+      const qNode = findNodeById(appState.round.currentQuestionNodeId);
+      if (!qNode) return;
+      const children = qNode.children || [];
+      if (!children.length) {
+        appState.view = "no_more_words";
+        render();
+        return;
+      }
+      beginAtParent(qNode.node_id, true);
+    }
+
+    function confirmGuess(correct) {
+      const wordId = appState.round.guessedWordId;
+      const wordName = appState.round.guessedWordName;
+      if (correct) {
+        if (wordId) appState.solvedWordIds.add(wordId);
+        appState.round.resultWordName = wordName;
+        appState.view = "guess_success";
+      } else {
+        appState.view = "guess_fail";
+      }
+      render();
+    }
+
+    function enterNextRoundChoice() {
+      if (appState.solvedWordIds.size >= TARGET_SUCCESS_COUNT) {
+        appState.view = "hidden_word";
+      } else {
+        appState.view = "next_choice";
+      }
+      appState.round = null;
+      render();
+    }
+
+    function getAiEligibleLeaves() {
+      const leaves = [];
+      for (const root of getVisibleRoots()) {
+        walk(root, (node) => {
+          if (isWordLeaf(node)) {
+            const label = node.label || "";
+            if (!label.includes("不要出现在猜AI环节")) {
+              leaves.push({ root, leaf: node });
+            }
+          }
+          return false;
+        });
+      }
+      return leaves;
+    }
+
+    function buildPathToLeaf(rootNode, leafId) {
+      function dfs(node, path) {
+        const nextPath = [...path, node];
+        if (node.node_id === leafId) return nextPath;
+        if (!node.children) return null;
+        for (const child of node.children) {
+          const result = dfs(child, nextPath);
+          if (result) return result;
+        }
+        return null;
+      }
+      return dfs(rootNode, []) || [];
+    }
+
+    function startAiRound() {
+      const allLeaves = getAiEligibleLeaves();
+      const picked = rand(allLeaves);
+      const path = buildPathToLeaf(picked.root, picked.leaf.node_id).filter(n => !isWordLeaf(n));
+
+      appState.aiRound = {
+        wordId: picked.leaf.word_id,
+        wordLabel: picked.leaf.word_text || cleanLabel(picked.leaf.label),
+        path,
+        revealIndex: 0
+      };
+
+      appState.view = "ai_intro";
+      render();
+    }
+
+    function nextAiReveal() {
+      const ai = appState.aiRound;
+      if (!ai) return;
+      if (ai.revealIndex < ai.path.length) ai.revealIndex += 1;
+      appState.view = "ai_reveal";
+      render();
+    }
+
+    function showAiAnswer(giveUp = false) {
+      appState.view = giveUp ? "ai_giveup" : "ai_answer";
+      render();
+    }
+
+    function confirmAiGuessResult(correct) {
+      appState.view = correct ? "ai_answer_success" : "ai_answer_fail";
+      render();
+    }
+
+    function renderWelcome() {
+      const scene = currentScene();
+      return `
+        <div class="card">
+          <p class="tiny">${scene.badge}</p>
+          <h1 class="title">读心术小游戏</h1>
+          <p class="scene-poem">${REPLY_TEXT.welcome}</p>
+        </div>
+        <div class="card">
+          <p class="scene-poem">${scene.text}</p>
+          <div class="button-row" style="margin-top:18px;">
+            <button class="primary" onclick="goToRootPicker()">开始</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function goToRootPicker() {
+      appState.view = "root_picker";
+      appState.round = null;
+      render();
+    }
+
+    function renderRootPicker() {
+      const roots = getRootBatch();
+      return `
+        <div class="card">
+          <p class="tiny">从一批祖父分类里开始会更顺一些</p>
+          <h2 class="title" style="font-size:28px;">先从一个模块开始吧</h2>
+          <p class="body-text">你可以直接点一个最接近的方向。如果一时间没有感觉，也可以换一批看看。</p>
+        </div>
+        <div class="root-grid">
+          ${roots.map(root => `
+            <button class="root-btn" onclick="startRootById('${root.node_id}')">${cleanLabel(root.label)}</button>
+          `).join("")}
+        </div>
+        <div class="button-row">
+          <button class="secondary" onclick="cycleRootBatch()">换一批</button>
+          <button class="ghost" onclick="renderWelcomeView()">回到欢迎页</button>
+        </div>
+      `;
+    }
+
+    function renderWelcomeView() {
+      appState.view = "welcome";
+      render();
+    }
+
+    function renderQuestion() {
+      const node = findNodeById(appState.round.currentQuestionNodeId);
+      const scene = currentScene();
+      return `
+        <div class="card">
+          <p class="tiny">${scene.badge}</p>
+          <h2 class="question">${textForQuestion(node)}</h2>
+        </div>
+        <div class="button-row">
+          <button class="primary" onclick="answerCurrentQuestion(true)">是</button>
+          <button class="secondary" onclick="answerCurrentQuestion(false)">否</button>
+          <button class="ghost" onclick="goBackOneStep()" ${appState.round.pathSnapshots.length === 0 ? "disabled" : ""}>返回上一问</button>
+        </div>
+        <div class="card">
+          <p class="tiny">已猜中 ${appState.solvedWordIds.size} / ${TARGET_SUCCESS_COUNT}</p>
+          <div class="solved-list">
+            ${
+              [...appState.solvedWordIds].slice(-8).map(id => `<span class="solved-item">${getWordNameById(id)}</span>`).join("")
+              || `<span class="tiny">还没有解锁词语，慢慢来～</span>`
+            }
+          </div>
+        </div>
+      `;
+    }
+
+    function renderNegativeConfirm() {
+      return `
+        <div class="card">
+          <h2 class="question">${REPLY_TEXT.negativePrompt}</h2>
+        </div>
+        <div class="button-row">
+          <button class="primary" onclick="confirmNegativeContinue(true)">是</button>
+          <button class="secondary" onclick="confirmNegativeContinue(false)">否</button>
+        </div>
+      `;
+    }
+
+    function renderSimpleMessage(nextActionHtml) {
+      return `
+        <div class="card">
+          <p class="scene-poem">${appState.tempMessage || ""}</p>
+        </div>
+        ${nextActionHtml}
+      `;
+    }
+
+    function renderGuessWord() {
+      const wordName = appState.round.guessedWordName || "……";
+      const line = format(rand(REPLY_TEXT.guessWord), { word: wordName });
+      return `
+        <div class="card">
+          <p class="tiny">我脑海里浮现了一个词</p>
+          <h2 class="question">${line}</h2>
+          <p class="result-word">${wordName}</p>
+        </div>
+        <div class="button-row">
+          <button class="primary" onclick="confirmGuess(true)">猜对了</button>
+          <button class="secondary" onclick="confirmGuess(false)">猜错了</button>
+        </div>
+      `;
+    }
+
+    function renderGuessSuccess() {
+      const word = appState.round?.resultWordName || "";
+      const special = SPECIAL_LINES[word];
+      return `
+        <div class="card">
+          <h2 class="title" style="font-size:28px;">${rand(REPLY_TEXT.guessed)}</h2>
+          <p class="result-word">${word}</p>
+          ${special ? `<p class="scene-poem" style="margin-top:14px;">${special}</p>` : ""}
+        </div>
+        <div class="card">
+          <p class="tiny">当前进度</p>
+          <div class="chips">
+            <span class="chip">已猜中 ${appState.solvedWordIds.size} / ${TARGET_SUCCESS_COUNT}</span>
+            <span class="chip">本轮解锁：${word}</span>
+          </div>
+        </div>
+        <div class="button-row">
+          <button class="primary" onclick="enterNextRoundChoice()">继续</button>
+        </div>
+      `;
+    }
+
+    function renderGuessFail() {
+      return `
+        <div class="card">
+          <h2 class="title" style="font-size:28px;">${rand(REPLY_TEXT.failed)}</h2>
+        </div>
+        ${renderNextChoiceBlock()}
+      `;
+    }
+
+    function renderNoMoreWords() {
+      return `
+        <div class="card">
+          <h2 class="title" style="font-size:28px;">${rand(REPLY_TEXT.noMore)}</h2>
+        </div>
+        ${renderNextChoiceBlock()}
+      `;
+    }
+
+    function renderNextChoiceBlock() {
+      return `
+        <div class="card">
+          <h2 class="question">${REPLY_TEXT.nextRound}</h2>
+        </div>
+        <div class="button-row">
+          <button class="primary" onclick="goToRootPicker()">我再想一个词</button>
+          <button class="secondary" onclick="startAiRound()">你来想一个词</button>
+        </div>
+      `;
+    }
+
+    function renderHiddenWord() {
+      return `
+        <div class="card">
+          <p class="tiny">终章 · 24 / 24</p>
+          <h2 class="title">你已经把所有光点都点亮啦</h2>
+          <p class="scene-poem">${currentScene().text}</p>
+        </div>
+        <div class="hidden-box">
+          <p class="tiny">隐藏词已解锁</p>
+          <div class="hidden-word">${HIDDEN_WORDS[0]}</div>
+          <div class="hidden-word" style="font-size:24px; margin-top:0;">${HIDDEN_WORDS[1]}</div>
+          <p class="scene-poem">谢谢你一路把这些词慢慢走完。它们像被拾起的落叶、歌、星光和街道，一点一点地拼成了最后这句想送给你的话。</p>
+        </div>
+        <div class="button-row">
+          <button class="primary" onclick="goToRootPicker()">再玩一轮</button>
+        </div>
+      `;
+    }
+
+    function renderAiIntro() {
+      return `
+        <div class="card">
+          <h2 class="title" style="font-size:28px;">${REPLY_TEXT.aiIntro}</h2>
+          <p class="scene-poem">${REPLY_TEXT.aiReady}</p>
+        </div>
+        <div class="button-row">
+          <button class="primary" onclick="nextAiReveal()">开始</button>
+          <button class="ghost" onclick="goToRootPicker()">返回</button>
+        </div>
+      `;
+    }
+
+    function renderAiReveal() {
+      const ai = appState.aiRound;
+      const hints = ai.path.slice(0, ai.revealIndex).map(n => cleanLabel(n.label));
+      const canGiveUp = ai.revealIndex >= ai.path.length;
+      return `
+        <div class="card">
+          <p class="tiny">我正在一点点给你提示</p>
+          <div class="solved-list">
+            ${hints.map(h => `<span class="solved-item">${h}</span>`).join("")}
+          </div>
+        </div>
+        <div class="button-row">
+          <button class="primary" onclick="showAiAnswer(false)">我猜到了</button>
+          <button class="secondary" onclick="nextAiReveal()" ${canGiveUp ? "disabled" : ""}>继续</button>
+          <button class="ghost" onclick="showAiAnswer(true)" ${canGiveUp ? "" : "disabled"}>我猜不到</button>
+        </div>
+      `;
+    }
+
+    function renderAiAnswer(giveUp = false) {
+      const word = appState.aiRound.wordLabel;
+      const line = format(rand(giveUp ? REPLY_TEXT.aiGiveUp : REPLY_TEXT.aiAnswer), { word });
+      if (giveUp) {
+        const special = SPECIAL_LINES[word];
+        return `
+          <div class="card">
+            <h2 class="question">${line}</h2>
+            <p class="result-word">${word}</p>
+            ${special ? `<p class="scene-poem" style="margin-top:14px;">${special}</p>` : ""}
+          </div>
+          <div class="button-row">
+            <button class="primary" onclick="goToRootPicker()">我再想一个词</button>
+            <button class="secondary" onclick="startAiRound()">你再想一个词</button>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="card">
+          <h2 class="question">${line}</h2>
+          <p class="result-word">${word}</p>
+        </div>
+        <div class="button-row">
+          <button class="primary" onclick="confirmAiGuessResult(true)">猜中了</button>
+          <button class="secondary" onclick="confirmAiGuessResult(false)">没猜中</button>
+        </div>
+      `;
+    }
+
+    function renderAiAnswerSuccess() {
+      const word = appState.aiRound.wordLabel;
+      const special = SPECIAL_LINES[word];
+      return `
+        <div class="card">
+          <h2 class="title" style="font-size:28px;">猜中啦！</h2>
+          <p class="result-word">${word}</p>
+          ${special ? `<p class="scene-poem" style="margin-top:14px;">${special}</p>` : ""}
+        </div>
+        <div class="button-row">
+          <button class="primary" onclick="goToRootPicker()">我再想一个词</button>
+          <button class="secondary" onclick="startAiRound()">你再想一个词</button>
+        </div>
+      `;
+    }
+
+    function renderAiAnswerFail() {
+      const word = appState.aiRound.wordLabel;
+      return `
+        <div class="card">
+          <h2 class="title" style="font-size:28px;">这次没有猜中呢～</h2>
+          <p class="result-word">${word}</p>
+        </div>
+        <div class="button-row">
+          <button class="primary" onclick="goToRootPicker()">我再想一个词</button>
+          <button class="secondary" onclick="startAiRound()">你再想一个词</button>
+        </div>
+      `;
+    }
+
+    function renderError(message) {
+      return `
+        <div class="card error-card">
+          <h2 class="title" style="font-size:26px;">页面加载失败</h2>
+          <p class="scene-poem">${message}</p>
+          <p class="scene-poem" style="margin-top:12px;">请确认：
+1. tree.json 放在 ./data/tree.json
+2. 不是直接双击本地 html 打开
+3. 用 GitHub Pages / Live Server / 本地静态服务器运行</p>
+        </div>
+      `;
+    }
+
+    function render() {
+      updateSceneUI();
+      const main = document.getElementById("appMain");
+      let html = "";
+
+      switch (appState.view) {
+        case "loading":
+          html = `<div class="card"><p class="scene-poem">正在读取树数据……</p></div>`;
+          break;
+        case "error":
+          html = renderError(appState.tempMessage || "未知错误");
+          break;
+        case "welcome":
+          html = renderWelcome();
+          break;
+        case "root_picker":
+          html = renderRootPicker();
+          break;
+        case "question":
+          html = renderQuestion();
+          break;
+        case "negative_confirm":
+          html = renderNegativeConfirm();
+          break;
+        case "negative_note_continue":
+          html = renderSimpleMessage(`
+            <div class="button-row">
+              <button class="primary" onclick="resumeAfterNegativeContinue()">继续</button>
+            </div>
+          `);
+          break;
+        case "negative_note_stop":
+          html = renderSimpleMessage(renderNextChoiceBlock());
+          break;
+        case "guess_word":
+          html = renderGuessWord();
+          break;
+        case "guess_success":
+          html = renderGuessSuccess();
+          break;
+        case "guess_fail":
+          html = renderGuessFail();
+          break;
+        case "no_more_words":
+          html = renderNoMoreWords();
+          break;
+        case "next_choice":
+          html = renderNextChoiceBlock();
+          break;
+        case "hidden_word":
+          html = renderHiddenWord();
+          break;
+        case "ai_intro":
+          html = renderAiIntro();
+          break;
+        case "ai_reveal":
+          html = renderAiReveal();
+          break;
+        case "ai_answer":
+          html = renderAiAnswer(false);
+          break;
+        case "ai_giveup":
+          html = renderAiAnswer(true);
+          break;
+        case "ai_answer_success":
+          html = renderAiAnswerSuccess();
+          break;
+        case "ai_answer_fail":
+          html = renderAiAnswerFail();
+          break;
+        default:
+          html = renderWelcome();
+      }
+
+      main.innerHTML = html;
+    }
+
+    async function bootstrap() {
+      try {
+        const res = await fetch('./data/tree.json');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const raw = await res.json();
+        if (!Array.isArray(raw)) throw new Error('tree.json 顶层不是数组');
+
+        appState.data = { roots: raw };
+        appState.view = "welcome";
+      } catch (err) {
+        appState.view = "error";
+        appState.tempMessage = String(err && err.message ? err.message : err);
+      }
+      render();
+    }
+
+    bootstrap();
+  </script>
 </body>
 </html>
