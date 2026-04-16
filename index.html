@@ -571,19 +571,25 @@
     }
 
     function flattenRoots(roots) {
-      return roots.map(r => ({ id: r.id, label: r.label }));
+      return roots.map(r => ({ id: r.node_id, label: cleanLabel(r.label) }));
     }
 
     function getRootById(id) {
-      return appState.data.roots.find(root => root.id === id) || null;
+      return appState.data.roots.find(root => root.node_id === id) || null;
     }
 
     function isWordLeaf(node) {
-      return node && node.type === "word_leaf";
+      return node && node.node_type === "word_leaf";
     }
 
     function getQuestionText(node) {
-      return `TA是不是“${node.label}”`;
+      return `TA是不是“${cleanLabel(node.label)}”`;
+    }
+
+    // 清洗文案
+    function cleanLabel(label) {
+      if (!label) return "";
+      return label.replace(/[{}<>]/g, "").trim();
     }
 
     function startRoundWithRoot(rootId) {
@@ -720,7 +726,7 @@
       walk(root, (node) => {
         if (!node.children) return;
         for (const child of node.children) {
-          if (child.id === nodeId) {
+          if (child.node_id === nodeId) {
             found = node;
             return true;
           }
@@ -744,7 +750,7 @@
     function findNodeById(rootNode, id) {
       let result = null;
       walk(rootNode, (node) => {
-        if (node.id === id) {
+        if (node.node_id === id) {
           result = node;
           return true;
         }
@@ -1274,7 +1280,10 @@
 
     async function bootstrap() {
       const res = await fetch('./data/tree.json');
-      appState.data = await res.json();
+      const raw = await res.json();
+      appState.data = {
+        roots: raw
+      };
       render();
     }
 
