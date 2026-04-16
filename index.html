@@ -571,15 +571,15 @@
     }
 
     function flattenRoots(roots) {
-      return roots.map(r => ({ id: r.node_id, label: cleanLabel(r.label) }));
+      return roots.filter(r => !isHiddenRoot(r)).map(r => ({ id: r.id, label: cleanLabel(r.label) }));
     }
 
     function getRootById(id) {
-      return appState.data.roots.find(root => root.node_id === id) || null;
+      return (appState.data.roots || []).find(root => root.id === id) || null;
     }
 
     function isWordLeaf(node) {
-      return node && node.node_type === "word_leaf";
+      return node && node.type === "word_leaf";
     }
 
     function getQuestionText(node) {
@@ -590,6 +590,18 @@
     function cleanLabel(label) {
       if (!label) return "";
       return label.replace(/[{}<>]/g, "").trim();
+    }
+
+    function isHiddenRoot(node) {
+      return cleanLabel(node.label).includes("隐藏词组");
+    }
+
+    function visibleRoots() {
+      return (appState.data?.roots || []).filter(root => !isHiddenRoot(root));
+    }
+
+    function shouldExcludeFromAi(node) {
+      return /不要出现在猜AI环节/.test(node.label || "");
     }
 
     function startRoundWithRoot(rootId) {
@@ -676,7 +688,7 @@
       if (!node) return;
 
       // 特殊敏感分支拦截
-      if (answer === true && node.label === "更倾向于消极") {
+      if (answer === true && cleanLabel(node.label) === "更倾向于消极") {
         appState.view = "negative_confirm";
         render();
         return;
@@ -726,7 +738,7 @@
       walk(root, (node) => {
         if (!node.children) return;
         for (const child of node.children) {
-          if (child.node_id === nodeId) {
+          if (child.id === nodeId) {
             found = node;
             return true;
           }
@@ -750,7 +762,7 @@
     function findNodeById(rootNode, id) {
       let result = null;
       walk(rootNode, (node) => {
-        if (node.node_id === id) {
+        if (node.id === id) {
           result = node;
           return true;
         }
@@ -820,7 +832,7 @@
       for (const root of appState.data.roots) {
         walk(root, (node) => {
           if (node.wordId === wordId) {
-            found = node.label;
+            found = cleanLabel(node.label);
             return true;
           }
           return false;
@@ -842,9 +854,9 @@
 
     function startAiRound() {
       const allLeafNodes = [];
-      for (const root of appState.data.roots) {
+      for (const root of visibleRoots()) {
         walk(root, (node) => {
-          if (isWordLeaf(node)) allLeafNodes.push({ root, leaf: node });
+          if (isWordLeaf(node) && !shouldExcludeFromAi(node)) allLeafNodes.push({ root, leaf: node });
           return false;
         });
       }
@@ -854,7 +866,7 @@
         rootId: picked.root.id,
         leafNodeId: picked.leaf.id,
         wordId: picked.leaf.wordId,
-        wordLabel: picked.leaf.label,
+        wordLabel: cleanLabel(picked.leaf.label),
         path,
         revealIndex: 0
       };
@@ -902,7 +914,7 @@
     }
 
     function getRootBatch() {
-      const roots = flattenRoots(appState.data.roots);
+      const roots = flattenRoots(visibleRoots());
       if (roots.length <= 4) return roots;
       const batch = [];
       let offset = appState.rootBatchOffset % roots.length;
@@ -920,7 +932,7 @@
 
     function textForQuestion(node) {
       const q = getQuestionText(node);
-      if (appState.round?.stack?.length === 0) return format(REPLY_TEXT.rootQuestion, { q: node.label });
+      if (appState.round?.stack?.length === 0) return format(REPLY_TEXT.rootQuestion, { q: cleanLabel(node.label) });
       if (appState.previousAnswer === true) return format(randomPick(REPLY_TEXT.yesLeads), { q });
       if (appState.previousAnswer === false) return format(randomPick(REPLY_TEXT.noLeads), { q });
       return `${q}？`;
@@ -1125,7 +1137,7 @@
         <div class="card">
           <p class="tiny">我正在一点点给你提示</p>
           <div class="solved-list">
-            ${hints.map(h => `<span class="solved-item">${h.label}</span>`).join("")}
+            ${hints.map(h => `<span class="solved-item">${cleanLabel(h.label)}</span>`).join("")}
           </div>
         </div>
         <div class="button-row">
@@ -1281,9 +1293,7 @@
     async function bootstrap() {
       const res = await fetch('./data/tree.json');
       const raw = await res.json();
-      appState.data = {
-        roots: raw
-      };
+      appState.data = raw;
       render();
     }
 
