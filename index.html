@@ -362,13 +362,19 @@
     };
 
     const SCENES = [
-      { min: 0, max: 3, title: "第一幕", badge: "柔光的开端", a: "#f7eee7", b: "#eddccf", text: "先在心里轻轻抓住一个词。\n它也许像一颗糖、一首歌、一片叶子，或者是一段悄悄发亮的回忆。" },
-      { min: 4, max: 7, title: "第二幕", badge: "午后与风", a: "#eef2e5", b: "#d9e5cf", text: "我们已经走过了一小段路。\n有些词像风吹过树梢，有些词会让人想起夏天和街道。" },
-      { min: 8, max: 11, title: "第三幕", badge: "城市与音乐", a: "#ece9f5", b: "#ddd7ef", text: "越往里走，越像在翻一册小小的地图。\n城市、场所、歌手、乐队，都在里面闪着光。" },
-      { min: 12, max: 15, title: "第四幕", badge: "柔软的事物", a: "#f8ecef", b: "#f0d8df", text: "有些词与温柔有关。\n像护手霜、日落、画画，也像安静地睡一觉。" },
-      { min: 16, max: 19, title: "第五幕", badge: "夜晚与星光", a: "#eceff7", b: "#d8dfef", text: "快要接近礼物的深处了。\n也许接下来会出现夜晚、川水、极光，或者月亮低低地落下来。" },
-      { min: 20, max: 23, title: "第六幕", badge: "快要抵达", a: "#f7f0e7", b: "#ead8c5", text: "再往前一点点，就会抵达那句真正想送给你的话。\n现在，让我们把最后几颗词语的星星点亮吧。" },
-      { min: 24, max: 999, title: "终章", badge: "月光显现", a: "#ede8f5", b: "#d9d4e9", text: "所有散落在路上的词，都慢慢把光聚拢起来了。" }
+      { min: 0, max: 3, title: "第一幕", badge: "柔光的开端", a: "#f7eee7", b: "#eddccf", text: `先在心里轻轻抓住一个词。
+它也许像一颗糖、一首歌、一片叶子，或者是一段悄悄发亮的回忆。` },
+      { min: 4, max: 7, title: "第二幕", badge: "午后与风", a: "#eef2e5", b: "#d9e5cf", text: `我们已经走过了一小段路。
+有些词像风吹过树梢，有些词会让人想起夏天和街道。` },
+      { min: 8, max: 11, title: "第三幕", badge: "城市与音乐", a: "#ece9f5", b: "#ddd7ef", text: `越往里走，越像在翻一册小小的地图。
+城市、场所、歌手、乐队，都在里面闪着光。` },
+      { min: 12, max: 15, title: "第四幕", badge: "柔软的事物", a: "#f8ecef", b: "#f0d8df", text: `有些词与温柔有关。
+像护手霜、日落、画画，也像安静地睡一觉。` },
+      { min: 16, max: 19, title: "第五幕", badge: "夜晚与星光", a: "#eceff7", b: "#d8dfef", text: `快要接近礼物的深处了。
+也许接下来会出现夜晚、川水、极光，或者月亮低低地落下来。` },
+      { min: 20, max: 23, title: "第六幕", badge: "快要抵达", a: "#f7f0e7", b: "#ead8c5", text: `再往前一点点，就会抵达那句真正想送给你的话。
+现在，让我们把最后几颗词语的星星点亮吧。` },
+      { min: 24, max: 999, title: "终章", badge: "月光显现", a: "#ede8f5", b: "#d9d4e9", text: `所有散落在路上的词，都慢慢把光聚拢起来了。` }
     ];
 
     const REPLY_TEXT = {
@@ -437,7 +443,11 @@
     };
 
     function cleanLabel(label = "") {
-      return label.replace(/[{}<>]/g, "").replace(/（.*?）/g, "").trim();
+      return String(label)
+        .replace(/[{}<>]/g, "")
+        .replace(/（.*?）/g, "")
+        .replace(/\(.*?\)/g, "")
+        .trim();
     }
 
     function rand(arr) {
@@ -473,28 +483,14 @@
       }
     }
 
-    function getVisibleRoots() {
-      return appState.data.roots.filter(root => {
-        const label = cleanLabel(root.label);
-        return !label.includes("隐藏词组");
-      });
-    }
-
-    function getRootBatch() {
-      const roots = getVisibleRoots();
-      if (roots.length <= 4) return roots;
-      const batch = [];
-      let offset = appState.rootBatchOffset % roots.length;
-      while (batch.length < 4) {
-        batch.push(roots[offset % roots.length]);
-        offset += 1;
+    function walk(node, fn) {
+      const stop = fn(node);
+      if (stop) return true;
+      if (!node.children) return false;
+      for (const child of node.children) {
+        if (walk(child, fn)) return true;
       }
-      return batch;
-    }
-
-    function cycleRootBatch() {
-      appState.rootBatchOffset += 4;
-      render();
+      return false;
     }
 
     function findNodeById(id, nodes = appState.data.roots) {
@@ -527,29 +523,38 @@
       return found;
     }
 
-    function walk(node, fn) {
-      const stop = fn(node);
-      if (stop) return true;
-      if (!node.children) return false;
-      for (const child of node.children) {
-        if (walk(child, fn)) return true;
-      }
-      return false;
+    function getVisibleRoots() {
+      return appState.data.roots.filter(root => !cleanLabel(root.label).includes("隐藏词组"));
     }
 
-    function getChildren(nodeId) {
-      const node = findNodeById(nodeId);
-      return node?.children || [];
+    function getRootBatch() {
+      const roots = getVisibleRoots();
+      if (roots.length <= 4) return roots;
+      const batch = [];
+      let offset = appState.rootBatchOffset % roots.length;
+      while (batch.length < 4) {
+        batch.push(roots[offset % roots.length]);
+        offset += 1;
+      }
+      return batch;
+    }
+
+    function cycleRootBatch() {
+      appState.rootBatchOffset += 4;
+      render();
     }
 
     function createRound(rootId) {
-      const root = findNodeById(rootId);
       return {
         rootId,
         currentParentId: rootId,
         currentQuestionNodeId: null,
+        previousAnswer: null,
         pathSnapshots: [],
-        statesByParent: {}
+        statesByParent: {},
+        guessedWordId: null,
+        guessedWordName: null,
+        resultWordName: null
       };
     }
 
@@ -561,6 +566,11 @@
         };
       }
       return appState.round.statesByParent[parentId];
+    }
+
+    function getChildren(nodeId) {
+      const node = findNodeById(nodeId);
+      return node?.children || [];
     }
 
     function getAvailableNormalChildren(parentId) {
@@ -578,7 +588,10 @@
       appState.round.pathSnapshots.push(deepClone({
         currentParentId: appState.round.currentParentId,
         currentQuestionNodeId: appState.round.currentQuestionNodeId,
-        statesByParent: appState.round.statesByParent
+        previousAnswer: appState.round.previousAnswer,
+        statesByParent: appState.round.statesByParent,
+        guessedWordId: appState.round.guessedWordId,
+        guessedWordName: appState.round.guessedWordName
       }));
     }
 
@@ -588,7 +601,10 @@
       const last = history.pop();
       appState.round.currentParentId = last.currentParentId;
       appState.round.currentQuestionNodeId = last.currentQuestionNodeId;
+      appState.round.previousAnswer = last.previousAnswer;
       appState.round.statesByParent = last.statesByParent;
+      appState.round.guessedWordId = last.guessedWordId;
+      appState.round.guessedWordName = last.guessedWordName;
       return true;
     }
 
@@ -728,8 +744,9 @@
       for (const root of getVisibleRoots()) {
         walk(root, (node) => {
           if (isWordLeaf(node)) {
-            const label = node.label || "";
-            if (!label.includes("不要出现在猜AI环节")) {
+            const rawLabel = String(node.label || "");
+            const rawText = String(node.word_text || "");
+            if (!rawLabel.includes("不要出现在猜AI环节") && !rawText.includes("不要出现在猜AI环节")) {
               leaves.push({ root, leaf: node });
             }
           }
@@ -756,7 +773,10 @@
     function startAiRound() {
       const allLeaves = getAiEligibleLeaves();
       const picked = rand(allLeaves);
-      const path = buildPathToLeaf(picked.root, picked.leaf.node_id).filter(n => !isWordLeaf(n));
+      const path = buildPathToLeaf(picked.root, picked.leaf.node_id)
+        .filter(n => !isWordLeaf(n))
+        .map(n => cleanLabel(n.label))
+        .filter(Boolean);
 
       appState.aiRound = {
         wordId: picked.leaf.word_id,
@@ -983,7 +1003,7 @@
 
     function renderAiReveal() {
       const ai = appState.aiRound;
-      const hints = ai.path.slice(0, ai.revealIndex).map(n => cleanLabel(n.label));
+      const hints = ai.path.slice(0, ai.revealIndex);
       const canGiveUp = ai.revealIndex >= ai.path.length;
       return `
         <div class="card">
@@ -1003,6 +1023,7 @@
     function renderAiAnswer(giveUp = false) {
       const word = appState.aiRound.wordLabel;
       const line = format(rand(giveUp ? REPLY_TEXT.aiGiveUp : REPLY_TEXT.aiAnswer), { word });
+
       if (giveUp) {
         const special = SPECIAL_LINES[word];
         return `
@@ -1066,11 +1087,10 @@
           <h2 class="title" style="font-size:26px;">页面加载失败</h2>
           <p class="scene-poem">${message || "未知错误"}</p>
           <p class="scene-poem" style="margin-top:12px;">当前页面地址：${window.location.href}</p>
-          <p class="scene-poem" style="margin-top:12px;">tree.json 测试地址：${window.location.origin + window.location.pathname.replace(/index\\.html$/, '') + 'data/tree.json'}</p>
           <p class="scene-poem" style="margin-top:12px;">请确认：
-    1. tree.json 放在 ./data/tree.json
-    2. 不是直接双击本地 html 打开
-    3. 用 GitHub Pages / Live Server / 本地静态服务器运行</p>
+1. tree.json 放在 ./data/tree.json
+2. 不是直接双击本地 html 打开
+3. 用 GitHub Pages / Live Server / 本地静态服务器运行</p>
         </div>
       `;
     }
@@ -1152,54 +1172,35 @@
       main.innerHTML = html;
     }
 
-    // async function bootstrap() {
-    //   try {
-    //     const res = await fetch('./data/tree.json');
-    //     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    //     const raw = await res.json();
-    //     if (!Array.isArray(raw)) throw new Error('tree.json 顶层不是数组');
+    async function bootstrap() {
+      try {
+        const res = await fetch('data/tree.json?ts=' + Date.now(), { cache: 'no-store' });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}：读取 data/tree.json 失败`);
+        }
 
-    //     appState.data = { roots: raw };
-    //     appState.view = "welcome";
-    //   } catch (err) {
-    //     appState.view = "error";
-    //     appState.tempMessage = String(err && err.message ? err.message : err);
-    //   }
-    //   render();
-    // }
+        const text = await res.text();
+        let raw;
+        try {
+          raw = JSON.parse(text);
+        } catch (jsonErr) {
+          throw new Error(`tree.json 不是合法 JSON：${jsonErr.message}`);
+        }
 
-async function bootstrap() {
-  try {
-    const url = 'data/tree.json?ts=' + Date.now();
-    const res = await fetch(url, { cache: 'no-store' });
+        if (!Array.isArray(raw)) {
+          throw new Error(`tree.json 顶层不是数组`);
+        }
 
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}，读取失败：${url}`);
+        appState.data = { roots: raw };
+        appState.view = "welcome";
+      } catch (err) {
+        appState.view = "error";
+        appState.tempMessage = err && err.message ? err.message : String(err);
+      }
+      render();
     }
 
-    const text = await res.text();
-
-    let raw;
-    try {
-      raw = JSON.parse(text);
-    } catch (jsonErr) {
-      throw new Error(`JSON 解析失败：${jsonErr.message}`);
-    }
-
-    if (!Array.isArray(raw)) {
-      throw new Error(`tree.json 顶层不是数组，而是：${Object.prototype.toString.call(raw)}`);
-    }
-
-    appState.data = { roots: raw };
-    appState.view = "welcome";
-
-    render();
-  } catch (err) {
-    appState.view = "error";
-    appState.tempMessage = err && err.message ? err.message : String(err);
-    render();
-  }
-}
-</script>
+    bootstrap();
+  </script>
 </body>
 </html>
