@@ -313,198 +313,9 @@
 
   <script>
     /**
-     * 这份代码是“最小可运行前端框架”：
-     * - 采用 node-based 树
-     * - 每个路径节点都有唯一 node_id
-     * - <其它> 是 fallback 节点，不直接作为问题展示
-     * - 每轮可猜全文所有词；猜中任意词都累计进度
-     * - 猜中 24 次后解锁隐藏词
-     *
-     * 数据文件请优先替换成你自己的真实 JSON。
-     * 当前内置的是 demo 数据，方便先把流程跑通。
-     */
-
-    const TARGET_SUCCESS_COUNT = 24;
-    const HIDDEN_WORD = "一间能看见月亮的房间";
-
-    const SPECIAL_LINES = {
-      "郑州": "是芮芮出生、长大的地方，你在这里收获了亲情、友情以及早八，也成为了善良、勇敢、美好的人～",
-      "北京": "是你上大学的地方，也是你有很多回忆和体验的地方，祝愿你今后在这里的每一天都是快乐的！",
-      "烟台": "相信迷笛音乐节是你美好的回忆。",
-      "云南": "愿你以后可以在这里领略自然的清新与辽远，也感受返璞归真的日常。",
-      "大阪": "是我生活的城市哈哈，希望我分享的那些生活角落可以让你得到放松～",
-      "东京": "这里生活节奏真的好快哦，不过也有很多咖啡馆唱片店以及有趣的小店！",
-      "京都": "是我也生活了很久的城市，是让人迷恋而沉醉的城市，鸭川散步的感觉好惬意。",
-      "雷克雅未克": "是在世界尽头的地方，是冰与火之国，是极光飞舞以及精灵闪烁的地方。",
-      "冰岛": "是在世界尽头的地方，是冰与火之国，是极光飞舞以及精灵闪烁的地方。",
-      "日本": "这是个充满矛盾的地方，是我留下了十几年记忆的地方。",
-      "对外经贸大学": "解锁新词汇！愿你在这里的经历都是难忘而美好的，走过的路在未来都会闪闪发光。",
-      "惠新西街": "解锁新词汇！愿你在这里的经历都是难忘而美好的，走过的路在未来都会闪闪发光。",
-      "鸭川": "这里夏天时真的会有鸭子游过呢，傍晚川水会被夕阳温柔覆盖，夜晚有人放线香花火，明月低悬在远山。",
-      "国家地理展览": "你想到这个展览啦～神奇而壮丽的景象很难忘，开心的回忆！",
-      "陶喆": "你果然想到他啦！听他唱歌真的会变得心情舒畅呢！",
-      "袁娅维": "耶，想到她啦！好像是我们第一个提起过的歌手～",
-      "方大同": "他会像一颗星星一样永远闪耀。",
-      "权志龙": "我记得你喜欢他啦，他很酷也很可爱啦。",
-      "许巍": "他也是我很喜欢的歌手，每次听都觉得烦恼可以随风而散，融入大海。",
-      "deca joins": "关于他们有很多记忆呢，我记得那天晚上我看完演出你安慰我，也记得你把他们的日历贴在宿舍～",
-      "刺猬": "是会让人有些感慨的乐队呢。上大学时ta们和后鲨的海报会出现在校园，午后从鼓楼走到MAO去看演出。",
-      "Sigur Rós": "很开心你想到这个词，它是我最喜欢的乐队～",
-      "Live House": "愿你可以在更多音乐现场感受放松与美妙的音乐体验～",
-      "音乐现场": "愿你可以在更多音乐现场感受放松与美妙的音乐体验～",
-      "《少年锦时》": "相信快乐很简单，爱很简单～愿你未来的生活也都快乐如彼时～",
-      "看日落": "解锁新词汇！是你很喜欢的呢，日落真的很美很温柔，愿你未来都能有随时感受日落的心境。",
-      "日落": "解锁新词汇！是你很喜欢的呢，日落真的很美很温柔，愿你未来都能有随时感受日落的心境。",
-      "日落时分": "解锁新词汇！是你很喜欢的呢，日落真的很美很温柔，愿你未来都能有随时感受日落的心境。",
-      "画画": "你画的小画很可爱呢！愿你今后也随时有写写画画、做自己喜欢的事的惬意时刻～",
-      "手作": "好像是你在郑州和朋友一起喜欢做的事呢，感觉是很开心惬意的时光啦！",
-      "逛公园": "愿你有更多静下来感受自然与放松的时光～",
-      "朝阳公园": "愿你有更多静下来感受自然与放松的时光～",
-      "睡觉": "哇，真的会想到这个词！祝你以后每天都有好的睡眠～",
-      "早八": "记录一只充满奇迹而幸运的、给人温暖而淘气的小猫！",
-      "银杏叶": "很喜欢秋天整条街都是金黄色的景象，也记得你在大学校园里捡到的一大束落叶。",
-      "skullpanda": "很开心你想到这个词，我很喜欢TA！",
-      "小马宝莉": "TA们很可爱也很勇敢，很好笑也很感人。还有我记得你喜欢碧琪啦！",
-      "小黑": "我们的小黑被想到啦，哈哈哈！它也很开心你给起的“珍珠”这个名字！",
-      "相机": "我们都是热爱生活的人，也祝愿你今后能够记录下更多美好回忆～",
-      "眼药水": "可能是我们认识时提到的第一个物品哈哈，你说你眼睛干涩时会用海露。",
-      "护手霜": "哈哈，以护手霜为首的我的谜之百宝箱～",
-      "退烧贴": "祝你以后身体健康，永远都用不上它！",
-      "贝斯": "很开心你想到它！贝斯的音色和律动感让人着迷，它在乐队中也是不可或缺的！",
-      "蓝莓": "好像是我们第一个聊到的水果哈哈～蓝莓对眼睛很好啦！",
-      "多肉葡萄": "你喜欢的喜茶的饮品～谢谢推荐啦，它确实很好喝！",
-      "提子饼干": "你想到这个词啦！是我喜欢的零食，也是我的微信名哈哈～",
-      "见手青": "最初是在《舌尖上的中国》里看到的，希望以后有机会在云南吃到～",
-      "《动物世界》": "它真是很好看的呀！自然最美好了，动物最美好了！"
-    };
-
-    const SCENES = [
-      {
-        minSolved: 0,
-        maxSolved: 3,
-        title: "第一幕",
-        badge: "柔光的开端",
-        a: "#f7eee7",
-        b: "#eddccf",
-        text: `先在心里轻轻抓住一个词。
-它也许像一颗糖、一首歌、一片叶子，或者是一段悄悄发亮的回忆。`
-      },
-      {
-        minSolved: 4,
-        maxSolved: 7,
-        title: "第二幕",
-        badge: "午后与风",
-        a: "#eef2e5",
-        b: "#d9e5cf",
-        text: `我们已经走过了一小段路。
-有些词像风吹过树梢，有些词会让人想起夏天和街道。`
-      },
-      {
-        minSolved: 8,
-        maxSolved: 11,
-        title: "第三幕",
-        badge: "城市与音乐",
-        a: "#ece9f5",
-        b: "#ddd7ef",
-        text: `越往里走，越像在翻一册小小的地图。
-城市、场所、歌手、乐队，都在里面闪着光。`
-      },
-      {
-        minSolved: 12,
-        maxSolved: 15,
-        title: "第四幕",
-        badge: "柔软的事物",
-        a: "#f8ecef",
-        b: "#f0d8df",
-        text: `有些词与温柔有关。
-像护手霜、日落、画画，也像安静地睡一觉。`
-      },
-      {
-        minSolved: 16,
-        maxSolved: 19,
-        title: "第五幕",
-        badge: "夜晚与星光",
-        a: "#eceff7",
-        b: "#d8dfef",
-        text: `快要接近礼物的深处了。
-也许接下来会出现夜晚、川水、极光，或者月亮低低地落下来。`
-      },
-      {
-        minSolved: 20,
-        maxSolved: 23,
-        title: "第六幕",
-        badge: "快要抵达",
-        a: "#f7f0e7",
-        b: "#ead8c5",
-        text: `再往前一点点，就会抵达那句真正想送给你的话。
-现在，让我们把最后几颗词语的星星点亮吧。`
-      },
-      {
-        minSolved: 24,
-        maxSolved: 999,
-        title: "终章",
-        badge: "月光显现",
-        a: "#ede8f5",
-        b: "#d9d4e9",
-        text: `所有散落在路上的词，都慢慢把光聚拢起来了。`
-      }
-    ];
-
-    const REPLY_TEXT = {
-      welcome: `欢迎来到读心术小游戏！\n在我们以前聊到过的那些内容里，先在心里抓住一个词。\n凭直觉想就可以。\n它可能和喜好或经历有关，也可能是一个名字、一样东西，甚至是某种感受。`,
-      yesLeads: [
-        "好，让我想一想……{q}？",
-        "好像离答案越来越近了！{q}？",
-        "好耶！{q}？",
-        "{q}？"
-      ],
-      noLeads: [
-        "那{q}？",
-        "嗯，那么{q}？",
-        "{q}？"
-      ],
-      rootQuestion: "TA是不是{q}？",
-      guessWord: [
-        "我猜你想的词是“{word}”，对吗？",
-        "我脑海里有了一个词……“{word}”，对吗？"
-      ],
-      guessed: [
-        "太好啦，猜中了！解锁新词汇！",
-        "好耶，我猜中啦！解锁新词汇！",
-        "猜对啦！解锁新词汇！",
-        "猜中咯！解锁新词汇！"
-      ],
-      failed: [
-        "啊，我暂时没有想到别的词……可以把想的词告诉我哦！",
-        "我是不是想到了错误的方向……可以把想的词告诉我哦！",
-        "啊哦，猜错了……可以把想的词告诉我哦！",
-        "猜错了呢……可以把想的词告诉我哦！"
-      ],
-      noMore: [
-        "啊，我暂时没有想到别的词……可以把想的词告诉我哦！",
-        "我暂时没有想到更多的词，可能是分类还不完善……可以把想的词告诉我哦！",
-        "啊哦，暂时没有想到更多的词了……可以把想的词告诉我哦！"
-      ],
-      nextRound: "再想一个词吗，还是换我想一个词你来猜？",
-      negativePrompt: "我猜这个词也许会唤起你并不很开心的回忆，要继续吗？",
-      negativeContinue: "好呢。拥有它是很正常的啦，那我继续猜～",
-      negativeStop: "好呢。没事的，拥有它是很正常的啦，抱抱芮芮～",
-      aiIntro: "我现在想好了一个词，我逐步给你提示，你来猜一猜～",
-      aiReady: "准备开始！",
-      aiAnswer: [
-        "我想的词是“{word}”，你猜对了吗？",
-        "我脑海里的词是“{word}”，你猜得对吗？"
-      ],
-      aiGiveUp: [
-        "我想的词是“{word}”，怎么样呢～",
-        "我脑海里的词是“{word}”，怎么样呀～",
-        "我想的词是“{word}”，有没有恍然大悟的感觉～"
-      ]
-    };
-
-    /**
      * demo 数据：只是为了先让框架跑通。
-     * 你之后可以直接替换成真正的 tree_v1.json 结构。
+     * 目前是“缩短版路径”，故意没有把你全文的所有中间属性层都铺满。
+     * 后面接入真实 tree_v1.json 后，每条路径都会按你原文的完整层级来走。
      */
     const DEMO_DATA = {
       roots: [
@@ -1072,7 +883,15 @@
     }
 
     function showAiAnswer(giveUp = false) {
+      appState.aiRound.awaitingResultFeedback = !giveUp;
       appState.view = giveUp ? "ai_giveup" : "ai_answer";
+      render();
+    }
+
+    function confirmAiGuessResult(correct) {
+      if (!appState.aiRound) return;
+      appState.aiRound.userGuessedCorrectly = correct;
+      appState.view = correct ? "ai_answer_success" : "ai_answer_fail";
       render();
     }
 
@@ -1315,15 +1134,28 @@
       const word = appState.aiRound.wordLabel;
       const line = format(randomPick(giveUp ? REPLY_TEXT.aiGiveUp : REPLY_TEXT.aiAnswer), { word });
       const special = SPECIAL_LINES[word];
+      if (giveUp) {
+        return `
+          <div class="card">
+            <h2 class="question">${line}</h2>
+            <p class="result-word">${word}</p>
+            ${special ? `<p class="scene-poem" style="margin-top:14px;">${special}</p>` : ""}
+          </div>
+          <div class="button-row">
+            <button class="primary" onclick="goToRootPicker()">我再想一个词</button>
+            <button class="secondary" onclick="startAiRound()">你再想一个词</button>
+          </div>
+        `;
+      }
+
       return `
         <div class="card">
           <h2 class="question">${line}</h2>
           <p class="result-word">${word}</p>
-          ${special ? `<p class="scene-poem" style="margin-top:14px;">${special}</p>` : ""}
         </div>
         <div class="button-row">
-          <button class="primary" onclick="goToRootPicker()">我再想一个词</button>
-          <button class="secondary" onclick="startAiRound()">你再想一个词</button>
+          <button class="primary" onclick="confirmAiGuessResult(true)">猜中了</button>
+          <button class="secondary" onclick="confirmAiGuessResult(false)">没猜中</button>
         </div>
       `;
     }
@@ -1400,6 +1232,31 @@
           break;
         case "ai_answer":
           html = renderAiAnswer(false);
+          break;
+        case "ai_answer_success":
+          html = `
+            <div class="card">
+              <h2 class="title" style="font-size:28px;">猜中啦！</h2>
+              <p class="result-word">${appState.aiRound.wordLabel}</p>
+              ${SPECIAL_LINES[appState.aiRound.wordLabel] ? `<p class="scene-poem" style="margin-top:14px;">${SPECIAL_LINES[appState.aiRound.wordLabel]}</p>` : ""}
+            </div>
+            <div class="button-row">
+              <button class="primary" onclick="goToRootPicker()">我再想一个词</button>
+              <button class="secondary" onclick="startAiRound()">你再想一个词</button>
+            </div>
+          `;
+          break;
+        case "ai_answer_fail":
+          html = `
+            <div class="card">
+              <h2 class="title" style="font-size:28px;">这次没有猜中呢～</h2>
+              <p class="result-word">${appState.aiRound.wordLabel}</p>
+            </div>
+            <div class="button-row">
+              <button class="primary" onclick="goToRootPicker()">我再想一个词</button>
+              <button class="secondary" onclick="startAiRound()">你再想一个词</button>
+            </div>
+          `;
           break;
         case "ai_giveup":
           html = renderAiAnswer(true);
