@@ -1273,10 +1273,8 @@
     }
 
     async function bootstrap() {
-      // 如果你后面要接真实 JSON，可以把下面这段改成 fetch:
-      // const res = await fetch('./data/reading_game_tree_v1.json');
-      // appState.data = await res.json();
-      appState.data = DEMO_DATA;
+      const res = await fetch('./data/tree.json');
+      appState.data = await res.json();
       render();
     }
 
