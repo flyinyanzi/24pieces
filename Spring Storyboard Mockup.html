@@ -1,0 +1,122 @@
+export default function SpringStoryboardMockup() {
+  const cards = [
+    { title: "第一颗词语种子", state: "done" },
+    { title: "第二片微光叶子", state: "done" },
+    { title: "第三阵柔软的风", state: "active" },
+    { title: "第四处等待苏醒", state: "locked" },
+  ];
+
+  return (
+    <div className="min-h-screen bg-[linear-gradient(180deg,#f7f3f7_0%,#f4f9f1_45%,#eef7ec_100%)] text-[#4f4a46]">
+      <div className="mx-auto max-w-6xl px-6 py-8 md:px-10 md:py-10">
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <p className="text-sm tracking-[0.25em] text-[#9a8f88] uppercase">Page 1 / 6</p>
+            <h1 className="mt-2 text-3xl md:text-5xl font-semibold tracking-wide text-[#5b4c56]">
+              春 · 樱花与复苏的森林
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm md:text-base leading-7 text-[#7d7270]">
+              四个小小的词，会慢慢把这一页点亮。最初只是雾气里的浅色枝条，
+              每完成一个模块，春天就更靠近一点。
+            </p>
+          </div>
+
+          <div className="hidden md:flex items-center gap-2 rounded-full border border-white/70 bg-white/60 px-4 py-2 shadow-sm backdrop-blur">
+            <span className="text-sm text-[#8c7f7d]">本页进度</span>
+            <span className="text-base font-medium text-[#5f5356]">2 / 4</span>
+          </div>
+        </div>
+
+        <div className="relative overflow-hidden rounded-[32px] border border-white/70 bg-white/35 shadow-[0_20px_60px_rgba(120,100,110,0.12)] backdrop-blur">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_18%,rgba(255,255,255,0.95),transparent_18%),radial-gradient(circle_at_84%_26%,rgba(255,255,255,0.72),transparent_16%),radial-gradient(circle_at_22%_78%,rgba(255,244,248,0.8),transparent_16%),radial-gradient(circle_at_75%_82%,rgba(244,255,246,0.75),transparent_18%)]" />
+
+          <div className="absolute inset-0 opacity-90">
+            <div className="absolute left-[6%] top-[14%] h-56 w-4 rounded-full bg-[#7e6758]/25 blur-[1px]" />
+            <div className="absolute left-[18%] top-[8%] h-72 w-5 rounded-full bg-[#8f7667]/20 blur-[1px]" />
+            <div className="absolute right-[14%] top-[10%] h-64 w-4 rounded-full bg-[#7d6a5c]/20 blur-[1px]" />
+            <div className="absolute right-[28%] top-[16%] h-56 w-3 rounded-full bg-[#866f64]/18 blur-[1px]" />
+
+            <div className="absolute left-[2%] top-[10%] h-48 w-48 rounded-full bg-[#f8d7e4]/55 blur-sm" />
+            <div className="absolute left-[12%] top-[4%] h-56 w-56 rounded-full bg-[#f4cada]/52 blur-sm" />
+            <div className="absolute left-[20%] top-[22%] h-40 w-40 rounded-full bg-[#d9efcf]/36 blur-sm" />
+            <div className="absolute right-[4%] top-[10%] h-52 w-52 rounded-full bg-[#f6dbe7]/48 blur-sm" />
+            <div className="absolute right-[18%] top-[4%] h-44 w-44 rounded-full bg-[#cfe8c6]/34 blur-sm" />
+            <div className="absolute right-[24%] top-[24%] h-36 w-36 rounded-full bg-[#f7d8e8]/44 blur-sm" />
+
+            <div className="absolute bottom-0 left-0 right-0 h-40 bg-[linear-gradient(180deg,rgba(209,233,198,0.08),rgba(183,214,171,0.42)_55%,rgba(153,191,141,0.62))]" />
+            <div className="absolute bottom-8 left-[8%] h-12 w-40 rounded-full bg-[#d9efcf]/60 blur-md" />
+            <div className="absolute bottom-10 right-[14%] h-10 w-36 rounded-full bg-[#e9f7dc]/55 blur-md" />
+          </div>
+
+          <div className="relative z-10 grid min-h-[78vh] grid-rows-[1fr_auto] p-5 md:p-7">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5 content-start self-start pt-40 md:pt-44">
+              {cards.map((card, i) => {
+                const styles = {
+                  done: "border-white/85 bg-white/72 shadow-[0_16px_38px_rgba(120,95,110,0.12)]",
+                  active: "border-[#f1c7d7] bg-white/82 ring-2 ring-[#f3cfdd]/70 shadow-[0_18px_42px_rgba(142,110,128,0.14)]",
+                  locked: "border-white/55 bg-white/42 opacity-75 shadow-[0_10px_28px_rgba(120,95,110,0.08)]",
+                }[card.state];
+
+                const badge = {
+                  done: "已点亮",
+                  active: "进行中",
+                  locked: "未开启",
+                }[card.state];
+
+                return (
+                  <div
+                    key={i}
+                    className={`rounded-[26px] border p-5 md:p-6 backdrop-blur-md transition-all ${styles}`}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-xs tracking-[0.25em] uppercase text-[#9f9292]">Module {i + 1}</p>
+                        <h2 className="mt-2 text-lg md:text-xl font-medium text-[#5d5054]">{card.title}</h2>
+                      </div>
+                      <span className="rounded-full border border-white/70 bg-white/75 px-3 py-1 text-xs text-[#8c7f7f]">
+                        {badge}
+                      </span>
+                    </div>
+
+                    <p className="mt-4 text-sm leading-7 text-[#7b7170]">
+                      {card.state === "done"
+                        ? "这一格已经被回答点亮，雾气退开了一点，花和新叶开始显出颜色。"
+                        : card.state === "active"
+                        ? "当前词语会从这里展开。回答完这一局之后，这一块会由微灰变成柔亮的春色。"
+                        : "这一格还在等待。等前面的词语慢慢被照亮，属于它的春天也会出现。"}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-6 rounded-[28px] border border-white/70 bg-white/68 p-5 shadow-[0_14px_34px_rgba(120,95,110,0.1)] backdrop-blur-md md:p-6">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-xs tracking-[0.25em] uppercase text-[#9c9090]">当前答题页入口</p>
+                  <h3 className="mt-2 text-xl md:text-2xl font-medium text-[#5f5056]">第三个模块正在发亮</h3>
+                  <p className="mt-2 text-sm leading-7 text-[#7b7170] max-w-2xl">
+                    这里以后可以接你现在那套猜词页面。也可以做成点击某个模块后，中央浮出答题卡片，再回到这页继续点亮森林。
+                  </p>
+                </div>
+
+                <button className="rounded-full bg-[linear-gradient(180deg,#d9a9bd,#c88ea7)] px-6 py-3 text-sm md:text-base font-medium text-white shadow-[0_12px_24px_rgba(171,110,136,0.22)] transition hover:translate-y-[-1px]">
+                  进入这一局
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 flex items-center justify-center gap-2">
+          {[0,1,2,3,4,5].map((n) => (
+            <div
+              key={n}
+              className={`h-2.5 rounded-full transition-all ${n === 0 ? 'w-10 bg-[#d59ab1]' : 'w-2.5 bg-[#dfd7d8]'}`}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
