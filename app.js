@@ -144,7 +144,9 @@ const appState = {
   overlay: null,
   rootBatchOffset: 0,
   round: null,
-  aiRound: null
+  aiRound: null,
+  introSeen: false,
+  pageHint: ""
 };
 
 function cleanLabel(label=""){
@@ -233,6 +235,9 @@ function currentPageData(){
 function currentPageSolvedCount(){
   return appState.pageProgress[appState.storyPage] || 0;
 }
+function currentPageHint(){
+  return appState.pageHint || "";
+}
 function getCurrentSlotIndex(){
   return currentPageSolvedCount();
 }
@@ -286,6 +291,19 @@ function getPageCardCopy(pageIndex, slotIndex, state){
       locked:"它还在窗边安静地等着，等灯和月色慢慢把房间填满。"}
   };
   return lines[pageKey][state];
+}
+
+
+function updateSpecialPageFlowAfterSuccess(previousPage){
+  appState.pageHint = "";
+  if (previousPage !== 4 && previousPage !== 5) return;
+  const otherPage = previousPage === 4 ? 5 : 4;
+  if ((appState.pageProgress[otherPage] || 0) < 4) {
+    appState.storyPage = otherPage;
+    appState.pageHint = previousPage === 4
+      ? "另一页，好像也亮了一点。接下来去月亮房间那一页看看吧。"
+      : "另一页，好像也亮了一点。接下来回到那页熟悉的颜色里吧。";
+  }
 }
 
 function createRound(rootNode){
@@ -489,7 +507,11 @@ function closeRoundAndReturn(success){
     const pageCount = solved - pageIndex * 4;
     appState.pageProgress[pageIndex] = Math.min(4, pageCount);
     ensureStoryPageBounds();
-    if (appState.solvedWordNames.size >= TARGET_SUCCESS_COUNT) {
+    if (!appState.introSeen) {
+    app.innerHTML = renderIntroScreen();
+    return;
+  }
+  if (appState.solvedWordNames.size >= TARGET_SUCCESS_COUNT) {
       appState.overlay = null;
       render();
       return;
@@ -533,6 +555,7 @@ function buildPathToLeaf(rootNode, leafId){
   return dfs(rootNode, []) || [];
 }
 function startAiRound(){
+  appState.pageHint = "";
   const eligible = getAiEligibleLeaves();
   if (!eligible.length) {
     appState.overlay = { type: "message", view: "no_more_words" };
@@ -568,6 +591,7 @@ function showAiAnswer(giveUp=false){
 }
 function confirmAiGuessResult(correct){
   const word = appState.aiRound?.wordLabel;
+  const previousPage = appState.storyPage;
   if (correct && word) {
     appState.solvedWordNames.add(word);
     const solved = appState.solvedWordNames.size;
@@ -575,6 +599,7 @@ function confirmAiGuessResult(correct){
     const pageCount = solved - pageIndex * 4;
     appState.pageProgress[pageIndex] = Math.min(4, pageCount);
     ensureStoryPageBounds();
+    updateSpecialPageFlowAfterSuccess(previousPage);
   }
   appState.overlay = { type: "ai", view: correct ? "ai_answer_success" : "ai_answer_fail" };
   render();
@@ -595,11 +620,36 @@ function render(){
     app.innerHTML = `<div class="app"><div class="forest-shell"><div class="panel"><h3>页面加载失败</h3><p>${escapeHtml(appState.error)}</p><p style="margin-top:10px;">请确认 tree.json 放在 ./data/tree.json，且通过静态服务器访问。</p></div></div></div>`;
     return;
   }
+  if (!appState.introSeen) {
+    app.innerHTML = renderIntroScreen();
+    return;
+  }
   if (appState.solvedWordNames.size >= TARGET_SUCCESS_COUNT) {
     app.innerHTML = renderHiddenScreen();
     return;
   }
   app.innerHTML = renderStoryScreen();
+}
+
+
+function renderIntroScreen(){
+  return `
+    <div class="app intro-scene spring">
+      <div class="story-bg" style="background:radial-gradient(circle at 18% 18%, rgba(255,255,255,0.92), transparent 20%), radial-gradient(circle at 82% 26%, rgba(255,255,255,0.72), transparent 18%), linear-gradient(180deg, rgba(249,243,247,1) 0%, rgba(244,250,241,1) 54%, rgba(235,245,229,1) 100%);"></div>
+      <div class="story-layer">${renderStoryDecor('spring', 0)}</div>
+      <div class="forest-shell intro-shell">
+        <div class="intro-card panel">
+          <p class="page-kicker">欢迎来到 24 Pieces</p>
+          <h1 class="page-title intro-title">这是一本会慢慢被点亮的小绘本。</h1>
+          <p class="page-copy">每完成一局，当前页面就会亮起一格，像把一片森林、一页颜色、或者一个能看见月亮的房间慢慢点亮。你可以直接点击每页正在发亮的模块进入；点开之后，再决定是自己想一个词，还是让AI来想一个词。</p>
+          <p class="page-copy">一共会有 24 局。等它们都结束的时候，最后会亮起一句隐藏的话。</p>
+          <div class="button-row" style="margin-top:20px;">
+            <button class="btn primary" onclick="startExperience()">开始这本绘本</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 function renderStoryScreen(){
@@ -620,7 +670,7 @@ function renderStoryScreen(){
           </div>
           <div class="topbar-right">
             <button class="btn secondary" onclick="openCurrentSlot()">开始这一局</button>
-            <button class="btn ghost" onclick="startAiRound()">你来想一个词</button>
+            <button class="btn ghost" onclick="startAiRound()">让AI想一个词</button>
           </div>
         </div>
         <div class="story-board">
@@ -631,6 +681,7 @@ function renderStoryScreen(){
                 <p class="page-kicker">${page.kicker}</p>
                 <h1 class="page-title">${page.title}</h1>
                 <p class="page-copy">${page.copy}</p>
+                ${currentPageHint() ? `<div class="page-note">${escapeHtml(currentPageHint())}</div>` : ''}
               </div>
               <div class="grid-wrap">
                 ${[0,1,2,3].map(slotIndex => renderStoryCard(appState.storyPage, slotIndex)).join("")}
@@ -777,7 +828,8 @@ function renderStoryDecor(key, solved){
 function renderOverlay(){
   const view = appState.overlay.view;
   let body = "";
-  if (view === "root_picker") body = renderRootPicker();
+  if (view === "slot_menu") body = renderSlotMenu();
+  else if (view === "root_picker") body = renderRootPicker();
   else if (view === "question") body = renderQuestion();
   else if (view === "negative_confirm") body = renderNegativeConfirm();
   else if (view === "negative_note_continue") body = renderSimpleMessage(REPLY_TEXT.negativeContinue, `<div class="button-row"><button class="btn primary" onclick="resumeAfterNegativeContinue()">继续</button></div>`);
@@ -826,6 +878,21 @@ function renderSimpleMessage(text, controls=""){
     ${controls}
   `;
 }
+
+function renderSlotMenu(){
+  return `
+    <div class="message-card">
+      <p class="page-kicker" style="margin-bottom:8px;">当前模块</p>
+      <h3 class="overlay-title" style="font-size:30px;margin:0 0 8px;">${escapeHtml(getPageCardTitle(appState.storyPage, getCurrentSlotIndex()))}</h3>
+      <p class="scene-text">先选一种方式开始这一格吧。无论选哪一种，结束后都会回到这一页继续点亮。</p>
+    </div>
+    <div class="option-grid two-way-grid">
+      <button class="btn primary big-choice" onclick="goToRootPicker()">开始这一局</button>
+      <button class="btn secondary big-choice" onclick="startAiRound()">让AI想一个词</button>
+    </div>
+  `;
+}
+
 function renderRootPicker(){
   const roots = getRootBatch();
   return `
@@ -919,7 +986,7 @@ function renderNextChoiceButtons(){
   return `
     <div class="button-row">
       <button class="btn primary" onclick="goToRootPicker()">我再想一个词</button>
-      <button class="btn secondary" onclick="startAiRound()">你来想一个词</button>
+      <button class="btn secondary" onclick="startAiRound()">让AI想一个词</button>
       <button class="btn ghost" onclick="closeOverlaySafely()">回到绘本页</button>
     </div>
   `;
@@ -1039,11 +1106,23 @@ function restartAll(){
   appState.round = null;
   appState.aiRound = null;
   appState.rootBatchOffset = 0;
+  appState.introSeen = false;
+  appState.pageHint = '';
   render();
 }
 function openCurrentSlot(){
-  if (!appState.overlay) goToRootPicker();
+  if (!appState.overlay) {
+    appState.pageHint = '';
+    appState.overlay = { type: 'slot_menu', view: 'slot_menu' };
+    render();
+  }
 }
+function startExperience(){
+  appState.introSeen = true;
+  appState.pageHint = '';
+  render();
+}
+
 function escapeHtml(str){
   return String(str).replace(/[&<>"']/g, m => ({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
@@ -1089,5 +1168,6 @@ window.closeAiOverlay = closeAiOverlay;
 window.closeOverlaySafely = closeOverlaySafely;
 window.openCurrentSlot = openCurrentSlot;
 window.restartAll = restartAll;
+window.startExperience = startExperience;
 
 bootstrap();
