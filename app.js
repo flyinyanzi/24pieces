@@ -668,10 +668,6 @@ function renderStoryScreen(){
             <div class="badge"><strong>${rootBadge}</strong></div>
             <div class="badge">总进度 <strong>${solved} / ${TARGET_SUCCESS_COUNT}</strong></div>
           </div>
-          <div class="topbar-right">
-            <button class="btn secondary" onclick="openCurrentSlot()">开始这一局</button>
-            <button class="btn ghost" onclick="startAiRound()">让AI想一个词</button>
-          </div>
         </div>
         <div class="story-board">
           <section class="story-main">
@@ -698,10 +694,7 @@ function renderStoryScreen(){
             </div>
             <div class="panel">
               <h3>这一页的词语模块</h3>
-              <p>你可以按顺序点亮。现在会优先打开本页当前正在发亮的那一格。</p>
-              <div class="button-row" style="margin-top:14px;">
-                <button class="btn primary" onclick="openCurrentSlot()">进入当前模块</button>
-              </div>
+              <p>直接点击当前正在发亮的模块，就会弹出这一局的选择层。进入方式已经收成一个入口，不需要再从别的按钮进去。</p>
               <p class="muted-note" style="margin-top:12px;">这一版先把春夏秋冬、特别页、月亮房间和答题浮层都接起来。细节插画和动效之后还能继续慢慢加。</p>
             </div>
             <div class="panel">
