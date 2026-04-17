@@ -450,6 +450,26 @@
         .trim();
     }
 
+    function getNodeId(node) {
+      return node?.node_id ?? node?.id ?? null;
+    }
+
+    function getNodeType(node) {
+      return node?.node_type ?? node?.type ?? null;
+    }
+
+    function getWordId(node) {
+      return node?.word_id ?? node?.wordId ?? null;
+    }
+
+    function getWordText(node) {
+      return node?.word_text ?? node?.wordText ?? cleanLabel(node?.label || "");
+    }
+
+    function getIsFallback(node) {
+      return node?.is_fallback ?? node?.isFallback ?? false;
+    }
+
     function rand(arr) {
       return arr[Math.floor(Math.random() * arr.length)];
     }
@@ -493,27 +513,6 @@
       return false;
     }
 
-
-    function getNodeId(node) {
-      return node?.node_id ?? node?.id ?? null;
-    }
-
-    function getNodeType(node) {
-      return node?.node_type ?? node?.type ?? null;
-    }
-
-    function getWordId(node) {
-      return node?.word_id ?? node?.wordId ?? null;
-    }
-
-    function getWordText(node) {
-      return node?.word_text ?? node?.wordText ?? cleanLabel(node?.label || "");
-    }
-
-    function getIsFallback(node) {
-      return node?.is_fallback ?? node?.isFallback ?? false;
-    }
-
     function findNodeById(id, nodes = appState.data.roots) {
       for (const node of nodes) {
         if (getNodeId(node) === id) return node;
@@ -544,8 +543,32 @@
       return found;
     }
 
+    const ROOT_FIRST_BATCH_ORDER = [
+      "地点",
+      "和音乐有关",
+      "一个人",
+      "生物",
+      "动画角色",
+      "玩偶",
+      "物品",
+      "吃的",
+      "喝的",
+      "一件你喜欢做的事",
+      "和大自然有关",
+      "用来描述一段时间",
+      "用来描述情绪或感觉",
+      "剧集或节目"
+    ];
+
     function getVisibleRoots() {
-      return appState.data.roots.filter(root => !cleanLabel(root.label).includes("隐藏词组"));
+      const visible = appState.data.roots.filter(root => cleanLabel(root.label) !== "隐藏词组");
+      const orderMap = new Map(ROOT_FIRST_BATCH_ORDER.map((label, idx) => [label, idx]));
+      return [...visible].sort((a, b) => {
+        const ai = orderMap.has(cleanLabel(a.label)) ? orderMap.get(cleanLabel(a.label)) : 999;
+        const bi = orderMap.has(cleanLabel(b.label)) ? orderMap.get(cleanLabel(b.label)) : 999;
+        if (ai !== bi) return ai - bi;
+        return cleanLabel(a.label).localeCompare(cleanLabel(b.label), 'zh-CN');
+      });
     }
 
     function getRootBatch() {
@@ -671,11 +694,12 @@
       const qNode = findNodeById(appState.round.currentQuestionNodeId);
       const parentId = appState.round.currentParentId;
       const parentState = getParentState(parentId);
+      const qNodeId = getNodeId(qNode);
 
       takeSnapshot();
 
-      if (!parentState.askedIds.includes(getNodeId(qNode))) {
-        parentState.askedIds.push(getNodeId(qNode));
+      if (!parentState.askedIds.includes(qNodeId)) {
+        parentState.askedIds.push(qNodeId);
       }
 
       if (answer === true && cleanLabel(qNode.label) === "更倾向于消极") {
@@ -700,7 +724,7 @@
           return;
         }
 
-        beginAtParent(getNodeId(qNode), true);
+        beginAtParent(qNodeId, true);
       } else {
         beginAtParent(parentId, false);
       }
@@ -760,50 +784,74 @@
       render();
     }
 
-    function getAiEligibleLeaves() {
+    function leafShouldBeExcludedFromAi(pathNodes, leafNode) {
+      const labels = [...pathNodes, leafNode].map(n => cleanLabel(n.label));
+      const leafText = getWordText(leafNode);
+      const excludedLeaves = new Set(["方大同", "焦虑", "孤独", "疲惫", "回避", "你的亲人", "你的朋友"]);
+      const excludedBranches = new Set(["你在生活中认识的人", "更倾向于消极"]);
+      if (excludedLeaves.has(leafText)) return true;
+      return labels.some(label => excludedBranches.has(label));
+    }
+
+    function buildDisplayPath(pathNodes) {
+      return pathNodes
+        .filter(n => !getIsFallback(n))
+        .filter(n => !isWordLeaf(n))
+        .map(n => cleanLabel(n.label))
+        .filter(label => label && label !== "隐藏词组");
+    }
+
+    function collectAiEligibleLeaves(rootNode) {
       const leaves = [];
-      for (const root of getVisibleRoots()) {
-        walk(root, (node) => {
-          if (isWordLeaf(node)) {
-            const rawLabel = String(node.label || "");
-            const rawText = String(getWordText(node) || "");
-            if (!rawLabel.includes("不要出现在猜AI环节") && !rawText.includes("不要出现在猜AI环节")) {
-              leaves.push({ root, leaf: node });
-            }
+
+      function dfs(node, path) {
+        const nextPath = [...path, node];
+        if (isWordLeaf(node)) {
+          const pathWithoutLeaf = nextPath.slice(0, -1);
+          if (!leafShouldBeExcludedFromAi(pathWithoutLeaf, node)) {
+            leaves.push({
+              root: rootNode,
+              leaf: node,
+              pathNodes: pathWithoutLeaf,
+              displayPath: buildDisplayPath(pathWithoutLeaf)
+            });
           }
-          return false;
-        });
+          return;
+        }
+
+        for (const child of node.children || []) {
+          dfs(child, nextPath);
+        }
       }
+
+      dfs(rootNode, []);
       return leaves;
     }
 
-    function buildPathToLeaf(rootNode, leafId) {
-      function dfs(node, path) {
-        const nextPath = [...path, node];
-        if (getNodeId(node) === leafId) return nextPath;
-        if (!node.children) return null;
-        for (const child of node.children) {
-          const result = dfs(child, nextPath);
-          if (result) return result;
-        }
-        return null;
+    function getAiEligibleLeaves() {
+      const leaves = [];
+      for (const root of getVisibleRoots()) {
+        leaves.push(...collectAiEligibleLeaves(root));
       }
-      return dfs(rootNode, []) || [];
+      return leaves.filter(item => item.displayPath.length > 0);
     }
 
     function startAiRound() {
       const allLeaves = getAiEligibleLeaves();
-      const picked = rand(allLeaves);
-      const path = buildPathToLeaf(picked.root, getNodeId(picked.leaf))
-        .filter(n => !isWordLeaf(n))
-        .map(n => cleanLabel(n.label))
-        .filter(Boolean);
+      if (!allLeaves.length) {
+        appState.tempMessage = "暂时没有适合让你来猜的词了。";
+        appState.view = "error";
+        render();
+        return;
+      }
 
+      const picked = rand(allLeaves);
       appState.aiRound = {
         wordId: getWordId(picked.leaf),
         wordLabel: getWordText(picked.leaf),
-        path,
-        revealIndex: 0
+        path: picked.displayPath,
+        revealIndex: 0,
+        solvedAdded: false
       };
 
       appState.view = "ai_intro";
@@ -818,12 +866,21 @@
       render();
     }
 
+    function markAiRoundSolved() {
+      const ai = appState.aiRound;
+      if (!ai || ai.solvedAdded) return;
+      if (ai.wordId) appState.solvedWordIds.add(ai.wordId);
+      ai.solvedAdded = true;
+    }
+
     function showAiAnswer(giveUp = false) {
+      markAiRoundSolved();
       appState.view = giveUp ? "ai_giveup" : "ai_answer";
       render();
     }
 
     function confirmAiGuessResult(correct) {
+      markAiRoundSolved();
       appState.view = correct ? "ai_answer_success" : "ai_answer_fail";
       render();
     }
