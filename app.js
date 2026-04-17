@@ -698,7 +698,7 @@ function renderStoryScreen(){
             <div class="panel">
               <h3>这一页的词语模块</h3>
               <p>直接点击当前正在发亮的模块，就会弹出这一局的选择层。进入方式已经收成一个入口，不需要再从别的按钮进去。</p>
-              <p class="muted-note" style="margin-top:12px;">这一版先把春夏秋冬、特别页、月亮房间和答题浮层都接起来。细节插画和动效之后还能继续慢慢加。</p>
+              <p class="muted-note" style="margin-top:12px;">它们会把春夏秋冬与特别空间连接起来。</p>
             </div>
             <div class="panel">
               <h3>总进度</h3>
