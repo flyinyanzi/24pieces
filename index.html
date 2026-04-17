@@ -436,6 +436,7 @@
       view: "loading",
       data: { roots: [] },
       solvedWordIds: new Set(),
+      solvedWordNames: new Set(),
       rootBatchOffset: 0,
       round: null,
       aiRound: null,
@@ -482,8 +483,21 @@
       return JSON.parse(JSON.stringify(obj));
     }
 
+    function getSolvedCount() {
+      return appState.solvedWordNames.size;
+    }
+
+    function markSolvedWord(wordId, wordName) {
+      if (wordId) appState.solvedWordIds.add(wordId);
+      if (wordName) appState.solvedWordNames.add(wordName);
+    }
+
+    function isWordAlreadySolved(wordId, wordName) {
+      return (wordId && appState.solvedWordIds.has(wordId)) || (wordName && appState.solvedWordNames.has(wordName));
+    }
+
     function currentScene() {
-      const n = appState.solvedWordIds.size;
+      const n = getSolvedCount();
       return SCENES.find(s => n >= s.min && n <= s.max) || SCENES[0];
     }
 
@@ -492,13 +506,13 @@
       const shell = document.getElementById("sceneShell");
       shell.style.setProperty("--scene-a", scene.a);
       shell.style.setProperty("--scene-b", scene.b);
-      document.getElementById("sceneBadge").textContent = `${scene.title} · ${appState.solvedWordIds.size} / ${TARGET_SUCCESS_COUNT}`;
+      document.getElementById("sceneBadge").textContent = `${scene.title} · ${getSolvedCount()} / ${TARGET_SUCCESS_COUNT}`;
 
       const strip = document.getElementById("progressStrip");
       strip.innerHTML = "";
       for (let i = 0; i < TARGET_SUCCESS_COUNT; i++) {
         const dot = document.createElement("div");
-        dot.className = `dot ${i < appState.solvedWordIds.size ? "filled" : ""}`;
+        dot.className = `dot ${i < getSolvedCount() ? "filled" : ""}`;
         strip.appendChild(dot);
       }
     }
@@ -718,6 +732,16 @@
         }
 
         const children = qNode.children || [];
+        const directLeafChildren = children.filter(child => isWordLeaf(child));
+        if (children.length === 1 && directLeafChildren.length === 1) {
+          const leaf = directLeafChildren[0];
+          appState.round.guessedWordId = getWordId(leaf);
+          appState.round.guessedWordName = getWordText(leaf);
+          appState.view = "guess_word";
+          render();
+          return;
+        }
+
         if (!children.length) {
           appState.view = "no_more_words";
           render();
@@ -765,7 +789,7 @@
       const wordId = appState.round.guessedWordId;
       const wordName = appState.round.guessedWordName;
       if (correct) {
-        if (wordId) appState.solvedWordIds.add(wordId);
+        markSolvedWord(wordId, wordName);
         appState.round.resultWordName = wordName;
         appState.view = "guess_success";
       } else {
@@ -775,7 +799,7 @@
     }
 
     function enterNextRoundChoice() {
-      if (appState.solvedWordIds.size >= TARGET_SUCCESS_COUNT) {
+      if (getSolvedCount() >= TARGET_SUCCESS_COUNT) {
         appState.view = "hidden_word";
       } else {
         appState.view = "next_choice";
@@ -808,7 +832,9 @@
         const nextPath = [...path, node];
         if (isWordLeaf(node)) {
           const pathWithoutLeaf = nextPath.slice(0, -1);
-          if (!leafShouldBeExcludedFromAi(pathWithoutLeaf, node)) {
+          const wordId = getWordId(node);
+          const wordLabel = getWordText(node);
+          if (!leafShouldBeExcludedFromAi(pathWithoutLeaf, node) && !isWordAlreadySolved(wordId, wordLabel)) {
             leaves.push({
               root: rootNode,
               leaf: node,
@@ -830,10 +856,17 @@
 
     function getAiEligibleLeaves() {
       const leaves = [];
+      const seenLabels = new Set();
       for (const root of getVisibleRoots()) {
         leaves.push(...collectAiEligibleLeaves(root));
       }
-      return leaves.filter(item => item.displayPath.length > 0);
+      return leaves.filter(item => {
+        if (!item.displayPath.length) return false;
+        const label = getWordText(item.leaf);
+        if (!label || seenLabels.has(label)) return false;
+        seenLabels.add(label);
+        return true;
+      });
     }
 
     function startAiRound() {
@@ -869,7 +902,7 @@
     function markAiRoundSolved() {
       const ai = appState.aiRound;
       if (!ai || ai.solvedAdded) return;
-      if (ai.wordId) appState.solvedWordIds.add(ai.wordId);
+      markSolvedWord(ai.wordId, ai.wordLabel);
       ai.solvedAdded = true;
     }
 
@@ -947,7 +980,7 @@
           <button class="ghost" onclick="goBackOneStep()" ${appState.round.pathSnapshots.length === 0 ? "disabled" : ""}>返回上一问</button>
         </div>
         <div class="card">
-          <p class="tiny">已猜中 ${appState.solvedWordIds.size} / ${TARGET_SUCCESS_COUNT}</p>
+          <p class="tiny">已猜中 ${getSolvedCount()} / ${TARGET_SUCCESS_COUNT}</p>
           <div class="solved-list">
             ${
               [...appState.solvedWordIds].slice(-8).map(id => `<span class="solved-item">${getWordNameById(id)}</span>`).join("")
@@ -1007,7 +1040,7 @@
         <div class="card">
           <p class="tiny">当前进度</p>
           <div class="chips">
-            <span class="chip">已猜中 ${appState.solvedWordIds.size} / ${TARGET_SUCCESS_COUNT}</span>
+            <span class="chip">已猜中 ${getSolvedCount()} / ${TARGET_SUCCESS_COUNT}</span>
             <span class="chip">本轮解锁：${word}</span>
           </div>
         </div>
