@@ -895,7 +895,7 @@ function renderRootPicker(){
     <div class="quiz-card">
       <p class="page-kicker" style="margin-bottom:8px;">开始这一局</p>
       <h3 class="overlay-title" style="font-size:30px;margin:0 0 8px;">${REPLY_TEXT.chooseRoot}</h3>
-      <p class="overlay-sub">先从一个分类进入。点完这一局后，就会回到当前绘本页继续点亮。</p>
+      <p class="overlay-sub">你想的词所属于以下哪个分类呢。一局结束后，就会回到当前绘本页继续点亮。</p>
     </div>
     <div class="root-grid">
       ${roots.map(root => `
