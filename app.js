@@ -641,8 +641,10 @@ function renderIntroScreen(){
         <div class="intro-card panel">
           <p class="page-kicker">欢迎来到 24 Pieces</p>
           <h1 class="page-title intro-title">这是一本会慢慢被点亮的小绘本。</h1>
-          <p class="page-copy">每完成一局，当前页面就会亮起一格，像把一片森林、一页颜色、或者一个能看见月亮的房间慢慢点亮。你可以直接点击每页正在发亮的模块进入；点开之后，再决定是自己想一个词，还是让AI来想一个词。</p>
-          <p class="page-copy">一共会有 24 局。等它们都结束的时候，最后会亮起一句隐藏的话。</p>
+          <p class="page-copy">这是一个读心术小游戏！在我们以前聊到过的那些内容里，先在心里抓住一个词。凭直觉想就可以。它可能和喜好或经历有关，也可能是一个名字、一样东西，甚至是某种感受。</p>
+          <p class="page-copy">也可以让AI来想一个词，你来猜它想的是哪个词。</p>
+          <p class="page-copy">每完成一局，当前页面就会亮起一格，像把一个季节、一片森林、或者一页颜色慢慢点亮。</p>
+          <p class="page-copy">一共会有 24 局。点击开始。</p>
           <div class="button-row" style="margin-top:20px;">
             <button class="btn primary" onclick="startExperience()">开始这本绘本</button>
           </div>
@@ -892,7 +894,7 @@ function renderRootPicker(){
     <div class="quiz-card">
       <p class="page-kicker" style="margin-bottom:8px;">开始这一局</p>
       <h3 class="overlay-title" style="font-size:30px;margin:0 0 8px;">${REPLY_TEXT.chooseRoot}</h3>
-      <p class="overlay-sub">先从一个祖父属性进入。点完这一局后，就会回到当前绘本页继续点亮。</p>
+      <p class="overlay-sub">先从一个分类进入。点完这一局后，就会回到当前绘本页继续点亮。</p>
     </div>
     <div class="root-grid">
       ${roots.map(root => `
