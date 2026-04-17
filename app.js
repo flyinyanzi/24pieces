@@ -641,9 +641,10 @@ function renderIntroScreen(){
         <div class="intro-card panel">
           <p class="page-kicker">欢迎来到 24 Pieces</p>
           <h1 class="page-title intro-title">这是一本会慢慢被点亮的小绘本。</h1>
-          <p class="page-copy">这是一个读心术小游戏！在我们以前聊到过的那些内容里，先在心里抓住一个词。凭直觉想就可以。它可能和喜好或经历有关，也可能是一个名字、一样东西，甚至是某种感受。</p>
+          <p class="page-copy">欢迎来到读心术小游戏！</p>
+          <p class="page-copy">在我们以前聊到过的那些内容里，先在心里抓住一个词。凭直觉想就可以。它可能和喜好或经历有关，也可能是一个名字、一样东西，甚至是某种感受。</p>
           <p class="page-copy">也可以让AI来想一个词，你来猜它想的是哪个词。</p>
-          <p class="page-copy">每完成一局，当前页面就会亮起一格，像把一个季节、一片森林、或者一页颜色慢慢点亮。</p>
+          <p class="page-copy">每完成一局，当前页面就会亮起一格，把一个季节、一片森林、或者一页颜色慢慢点亮。</p>
           <p class="page-copy">一共会有 24 局。点击开始。</p>
           <div class="button-row" style="margin-top:20px;">
             <button class="btn primary" onclick="startExperience()">开始这本绘本</button>
